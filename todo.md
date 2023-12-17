@@ -1,2 +1,3 @@
-- Perhaps make the screen into a global variable
+- Make the console into a global variable
 - Add scrolling to vga_text mode
+- Should there be hashmap of pages a process is using (address + numbers) or something similar

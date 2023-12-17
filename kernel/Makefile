@@ -32,6 +32,5 @@ clean:
 run:
 	RUST_TARGET_PATH=/Users/siddharth/Code/rust/sid_os/kernel $(R_COMPILER) build --target $(TARGET)
 	rm -f kernel.bin
-	mkdir object_files && cd object_files && mkdir src && cd src && mkdir asm && cd ../../../../
+	mkdir object_files && cd object_files && mkdir src && cd src && mkdir asm && cd ../../
 	docker run --rm -v /Users/siddharth/Code/rust/sid_os/:/code sid_os/toolchain bash -c "cd code/kernel && make"
-	rm -rf object_files

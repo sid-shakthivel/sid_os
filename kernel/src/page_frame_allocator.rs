@@ -18,7 +18,7 @@ pub struct PageFrameAllocator {
     memory_start: usize,
     memory_end: usize,
     pub free_page_frames: &'static mut FreeStack,
-    pub current_page: *mut usize,
+    pub current_page: usize,
 }
 
 impl PageFrame {
@@ -28,12 +28,15 @@ impl PageFrame {
 }
 
 impl PageFrameAllocator {
-    pub fn new(memory_start: usize, memory_end: usize) -> PageFrameAllocator {
+    pub fn new(mut memory_start: usize, mut memory_end: usize) -> PageFrameAllocator {
+        memory_start = round_to_nearest_page(memory_start);
+        memory_end = round_to_nearest_page(memory_end);
+
         let page_frame_allocator = PageFrameAllocator {
             memory_start: memory_start + (PAGE_SIZE * 2),
             memory_end,
             free_page_frames: unsafe { &mut *((memory_start + PAGE_SIZE) as *mut FreeStack) },
-            current_page: unsafe { &mut *((memory_start + (PAGE_SIZE * 2)) as *mut usize) },
+            current_page: memory_start + (PAGE_SIZE * 2),
         };
 
         return page_frame_allocator;
@@ -43,12 +46,15 @@ impl PageFrameAllocator {
        Return a free page if available within the stack
        Else return the address of the current page and increment
     */
-    pub fn alloc_page(&mut self) -> Option<*mut usize> {
+    pub fn alloc_page_frame(&mut self) -> Option<*mut usize> {
         if self.free_page_frames.is_empty() {
             // Check if over memory limit
-            if (self.current_page + PAGE_SIZE) > self.memory_end {
+            let address = self.current_page;
+
+            if address > self.memory_end {
                 return None;
             } else {
+                self.current_page += 4096;
                 return Some(self.current_page as *mut usize);
             }
         } else {
@@ -62,9 +68,25 @@ impl PageFrameAllocator {
     }
 
     // Add the address of the free'd page to the stack
-    pub fn free_page(&mut self, frame_address: *mut usize) {
+    pub unsafe fn free_page_frame(&mut self, frame_address: *mut usize) {
         let new_free_frame = unsafe { &mut *(frame_address as *mut PageFrame) };
-        self.free_frames.push(new_free_frame);
+        self.free_page_frames.push(new_free_frame);
+    }
+
+    // Allocates a continuous amount of pages subsequently
+    fn alloc_page_frames(&mut self, pages_required: usize) -> *mut usize {
+        let address = self.current_page;
+        for _i in 0..pages_required {
+            self.current_page += 4096;
+        }
+        return address as *mut usize;
+    }
+
+    // Frees a continuous amount of memory
+    fn free_page_frames(&mut self, frame_address: *mut usize, pages_required: usize) {
+        for i in 0..pages_required {
+            unsafe { self.free_page_frame(frame_address.offset(i as isize)) }
+        }
     }
 }
 
@@ -103,4 +125,8 @@ impl FreeStack {
         self.top = Some(node);
         self.length += 1;
     }
+}
+
+pub fn round_to_nearest_page(size: usize) -> usize {
+    ((size as i64 + 4095) & (-4096)) as usize
 }
