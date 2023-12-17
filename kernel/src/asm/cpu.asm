@@ -26,23 +26,23 @@ inpw_raw:
   in ax, dx
   ret
 
-; Load IDT
-global idt_flush    
-idt_flush:
-  cli ; Disable interrupts
-  extern IDTR
-  lidt [IDTR]
-  ret
+; ; Load IDT
+; global idt_flush    
+; idt_flush:
+;   cli ; Disable interrupts
+;   extern IDTR
+;   lidt [IDTR]
+;   ret
 
-global flush_tlb
-flush_tlb:
-  push rax
-  mov rax, cr3
-  mov cr3, rax
-  pop rax
-  ret
+; global flush_tlb
+; flush_tlb:
+;   push rax
+;   mov rax, cr3
+;   mov cr3, rax
+;   pop rax
+;   ret
 
-global speedy_write
-speedy_write:
-  xchg bx, bx
-  ret
+; global speedy_write
+; speedy_write:
+;   xchg bx, bx
+;   ret
