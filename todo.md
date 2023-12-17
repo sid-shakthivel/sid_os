@@ -1,0 +1,2 @@
+- Perhaps make the screen into a global variable
+- Add scrolling to vga_text mode
