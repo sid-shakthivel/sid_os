@@ -1,0 +1,37 @@
+TARGET = x86_64-sid_os-none
+
+R_COMPILER = cargo
+
+ASSEMBLER = nasm
+ASSEMBLER_FLAGS = -f elf64 -O0
+
+OBJ := object_files
+RUST_LIBRARY := target/$(TARGET)/debug/libkernel.a
+LINKER_FILE := src/linker.ld
+
+ASSEMBLY_SOURCES := $(wildcard src/asm/*.asm) $(wildcard *.asm)
+ASSEMBLY_OBJECTS := $(patsubst %.asm, $(OBJ)/%.o, $(ASSEMBLY_SOURCES))
+FONT := font.o
+
+all: sid_os.iso
+
+sid_os.iso: kernel.bin
+	cd /code; rm -f isodir/boot/kernel.bin; \
+	cp /code/kernel/kernel.bin isodir/boot; \
+	grub-mkrescue /usr/lib/grub/i386-pc -o sid_os.iso isodir
+
+kernel.bin: $(ASSEMBLY_OBJECTS) 
+	ld -n --gc-sections -o kernel.bin -T ${LINKER_FILE} ${ASSEMBLY_OBJECTS} $(RUST_LIBRARY)
+
+$(ASSEMBLY_OBJECTS): $(ASSEMBLY_SOURCES)
+	$(ASSEMBLER) $(ASSEMBLER_FLAGS) $(patsubst $(OBJ)/%.o, %.asm, $@) -o $@
+
+clean:
+	$(R_COMPILER) clean
+
+run:
+	RUST_TARGET_PATH=/Users/siddharth/Code/rust/sid_os/kernel $(R_COMPILER) build --target $(TARGET)
+	rm -f kernel.bin
+	mkdir object_files && cd object_files && mkdir src && cd src && mkdir asm && cd ../../../../
+	docker run --rm -v /Users/siddharth/Code/rust/sid_os/:/code sid_os/toolchain bash -c "cd code/kernel && make"
+	rm -rf object_files
