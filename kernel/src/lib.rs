@@ -1,6 +1,7 @@
 #![no_std] // Don't link with Rust standard library
 #![feature(const_option)]
 
+mod page_frame_allocator;
 mod output;
 mod ports;
 mod uart;
