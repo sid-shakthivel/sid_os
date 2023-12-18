@@ -6,9 +6,9 @@
 
 const PORT: u16 = 0x3F8; // COM1
 
-use crate::output::Output;
-use crate::ports::{inb, outb};
-use crate::spinlock::Lock;
+use crate::output::output::Output;
+use crate::utils::ports::{inb, outb};
+use crate::utils::spinlock::Lock;
 use core::fmt;
 
 pub struct Console {

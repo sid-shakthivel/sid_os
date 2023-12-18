@@ -13,7 +13,7 @@ Buffer entry format:
 +---------------------------------------------+
 */
 
-use crate::output::Output;
+use crate::output::output::Output;
 
 const VGA_WIDTH: usize = 80;
 const VGA_HEIGHT: usize = 25;

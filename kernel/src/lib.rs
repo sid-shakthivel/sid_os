@@ -1,21 +1,29 @@
 #![no_std] // Don't link with Rust standard library
 #![feature(const_option)]
 
-mod gdt;
-mod multiboot2;
-mod output;
-mod page_frame_allocator;
-mod ports;
-mod spinlock;
-mod uart;
-mod vga_text;
+mod output {
+    pub mod output;
+    pub mod uart;
+    pub mod vga_text;
+}
 
-use crate::{gdt::generate_gdt_values, output::Output};
+mod memory {
+    pub mod gdt;
+    pub mod page_frame_allocator;
+}
+
+mod utils {
+    pub mod multiboot2;
+    pub mod ports;
+    pub mod spinlock;
+}
+
+use crate::output::output::Output;
+use crate::output::uart::CONSOLE;
+use crate::output::vga_text::Screen;
+use crate::utils::multiboot2::MultibootInfo;
 use core::mem;
 use core::panic::PanicInfo;
-use multiboot2::MultibootInfo;
-use uart::CONSOLE;
-use vga_text::Screen;
 
 #[no_mangle]
 pub extern "C" fn rust_main(multiboot_information_address: usize) {
@@ -31,7 +39,7 @@ pub extern "C" fn rust_main(multiboot_information_address: usize) {
     print_serial!("Start of multiboot = {:x}\n", multiboot_information_address);
     print_serial!("End of multiboot = {:x}\n", multiboot_end);
 
-    generate_gdt_values();
+    // generate_gdt_values();
 
     loop {}
 }

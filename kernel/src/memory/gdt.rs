@@ -13,7 +13,7 @@ GDT Entry:
 +---------+------------+------------+-----------------+-----------+---------+---------+--------+--------+---------+
 */
 
-use crate::{print_serial, uart::CONSOLE};
+use crate::{print_serial, output::uart::CONSOLE};
 
 enum GDTBits {
     IsAccessed,

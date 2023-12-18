@@ -1,4 +1,5 @@
-- Add scrolling to vga_text modew
+- Add scrolling to vga_text mode
 - Should there be hashmap of pages a process is using (address + numbers) or something similar
 - Add support for grub modules
 - Parse the multiboot properly
+- Figure whether TSS is needed
