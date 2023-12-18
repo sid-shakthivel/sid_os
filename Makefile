@@ -7,6 +7,9 @@ SYSCALLS = $(shell pwd)/userland/syscalls
 run-qemu: all
 	qemu-system-x86_64 -accel hvf -serial stdio -cdrom sid_os.iso
 
+run-bochs: all
+	bochs -f bochs/bochsrc.txt -q
+
 all:
 	# Replace filesystem
 	# rm -f isodir/modules/fs.img

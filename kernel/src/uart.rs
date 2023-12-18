@@ -8,13 +8,15 @@ const PORT: u16 = 0x3F8; // COM1
 
 use crate::output::Output;
 use crate::ports::{inb, outb};
+use crate::spinlock::Lock;
+use core::fmt;
 
 pub struct Console {
     port: u16,
 }
 
 impl Console {
-    pub fn new() -> Console {
+    pub fn init(&self) {
         outb(PORT + 1, 0x00); // Disable all interrupts
         outb(PORT + 3, 0x80); // Enable DLAB (set baud rate divisor)
         outb(PORT + 0, 0x03); // Set divisor to 3 (lo byte) 38400 baud
@@ -31,8 +33,6 @@ impl Console {
         // If serial is not faulty set it in normal operation mode
         // (not-loopback with IRQs enabled and OUT#1 and OUT#2 bits enabled)
         outb(PORT + 4, 0x0F);
-
-        return Console { port: PORT };
     }
 
     fn read_serial(&self) -> char {
@@ -61,4 +61,22 @@ impl Output for Console {
 
         self.write_e9_hack(character);
     }
+}
+
+pub static CONSOLE: Lock<Console> = Lock::new(Console { port: PORT });
+
+impl fmt::Write for Console {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
+    }
+}
+
+#[macro_export]
+macro_rules! print_serial {
+    ($($arg:tt)*) => ({
+        use core::fmt::Write;
+        CONSOLE.lock().write_fmt(format_args!($($arg)*)).unwrap();
+        CONSOLE.free();
+    });
 }

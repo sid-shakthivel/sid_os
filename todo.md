@@ -1,3 +1,4 @@
-- Make the console into a global variable
-- Add scrolling to vga_text mode
+- Add scrolling to vga_text modew
 - Should there be hashmap of pages a process is using (address + numbers) or something similar
+- Add support for grub modules
+- Parse the multiboot properly
