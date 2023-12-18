@@ -1,12 +1,18 @@
 ; src/boot.asm
 
+
+
 extern long_mode_start
 global start
 
 section .rodata
 gdt64:
     dq 0 ; null entry
-    dq 0x002098000000ffff ; kernel code segment
+    dq 0x002f9b000000ffff; kernel code segment
+    dq 0x002f93000000ffff; kernel data segment
+    dq 0x002ffb000000ffff; user code segment
+    dq 0x002ff3000000ffff; user data segment
+    
 .pointer:
     dw $ - gdt64 - 1
     dq gdt64
