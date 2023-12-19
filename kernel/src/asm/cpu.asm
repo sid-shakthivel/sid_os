@@ -26,13 +26,13 @@ inpw_raw:
   in ax, dx
   ret
 
-; ; Load IDT
-; global idt_flush    
-; idt_flush:
-;   cli ; Disable interrupts
-;   extern IDTR
-;   lidt [IDTR]
-;   ret
+; Load IDT
+global flush_idt    
+flush_idt:
+  cli ; Disable interrupts
+  extern IDTR
+  lidt [IDTR]
+  ret
 
 ; global flush_tlb
 ; flush_tlb:

@@ -1,5 +1,7 @@
 #![no_std] // Don't link with Rust standard library
 #![feature(const_option)]
+#![feature(core_intrinsics)]
+#![feature(naked_functions)]
 
 mod output {
     pub mod output;
@@ -18,6 +20,8 @@ mod utils {
     pub mod spinlock;
 }
 
+mod interrupts;
+
 use crate::output::output::Output;
 use crate::output::uart::CONSOLE;
 use crate::output::vga_text::Screen;
@@ -32,6 +36,8 @@ pub extern "C" fn rust_main(multiboot_information_address: usize) {
 
     CONSOLE.lock().init();
     CONSOLE.free();
+
+    interrupts::init();
 
     // TODO: Fix this because literally adding a page purely for safety
     let multiboot_end = multiboot_information_address + mem::size_of::<MultibootInfo>() + 0x1000;
