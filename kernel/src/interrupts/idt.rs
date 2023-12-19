@@ -1,4 +1,6 @@
-use crate::interrupts::InterruptHandlerFunc;
+use super::ExceptionStackFrame;
+use super::InterruptHandlerFunc;
+use super::TestHandlerFunc;
 
 pub const IDT_MAX_DESCRIPTIONS: usize = 256;
 
@@ -19,6 +21,42 @@ impl IDTEntry {
         gate_type: GateType,
         privilege_level: PrivilegeLevel,
         func_addr_raw: InterruptHandlerFunc,
+    ) -> IDTEntry {
+        let func_addr = func_addr_raw as usize;
+
+        return IDTEntry {
+            isr_low: (func_addr & 0xFFFF) as u16,
+            kernel_cs: 0x08,
+            ist: 0,
+            attributes: IDTEntry::generate_flags((gate_type, privilege_level)),
+            isr_mid: ((func_addr >> 16) & 0xFFFF) as u16,
+            isr_high: (func_addr >> 32) as u32,
+            reserved: 0,
+        };
+    }
+
+    pub fn new_test(
+        gate_type: GateType,
+        privilege_level: PrivilegeLevel,
+        func_addr_raw: TestHandlerFunc,
+    ) -> IDTEntry {
+        let func_addr = func_addr_raw as usize;
+
+        return IDTEntry {
+            isr_low: (func_addr & 0xFFFF) as u16,
+            kernel_cs: 0x08,
+            ist: 0,
+            attributes: IDTEntry::generate_flags((gate_type, privilege_level)),
+            isr_mid: ((func_addr >> 16) & 0xFFFF) as u16,
+            isr_high: (func_addr >> 32) as u32,
+            reserved: 0,
+        };
+    }
+
+    pub fn new_best(
+        gate_type: GateType,
+        privilege_level: PrivilegeLevel,
+        func_addr_raw: usize,
     ) -> IDTEntry {
         let func_addr = func_addr_raw as usize;
 

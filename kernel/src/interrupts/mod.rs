@@ -12,14 +12,19 @@ use crate::interrupts::idt::PrivilegeLevel;
 use crate::interrupts::idt::IDT;
 use crate::interrupts::idt::IDTR;
 use crate::interrupts::idt::IDT_MAX_DESCRIPTIONS;
+use crate::utils::ports::inb;
 
 #[warn(unused_assignments)]
 use crate::print_serial;
 use crate::CONSOLE;
 
 mod idt;
+pub mod pic;
 
 use core::arch::asm;
+
+use self::pic::PicFunctions;
+use self::pic::PICS;
 
 // TODO: Replace with a hashmap
 const EXCEPTION_MESSAGES: &'static [&'static str] = &[
@@ -65,16 +70,7 @@ const STATIC_NUMBERS: [usize; 32] = [
 ];
 
 pub type InterruptHandlerFunc = extern "C" fn() -> !;
-
-macro_rules! push_registers {
-    () => {
-        asm!(
-            "push rax", "push rbx", "push rcx", "push rdx", "push rbp", "push rdi", "push rsi",
-            "push r8", "push r9", "push r10", "push r11", "push r12", "push r13", "push r14",
-            "push r15"
-        );
-    };
-}
+pub type TestHandlerFunc = extern "C" fn();
 
 #[derive(Debug)]
 #[repr(C)]
@@ -86,41 +82,61 @@ struct ExceptionStackFrame {
     ss: u64,
 }
 
-macro_rules! setup_exception_with_error_handler {
-    ($exception_num: expr) => {
+macro_rules! setup_test_handler {
+    ($func_name: ident, $exception_num: expr) => {{
         #[naked]
-        extern "C" fn wrapper() -> ! {
+        extern "C" fn wrapper() {
             unsafe {
                 asm!(
-                    "cld",
-                    "push rax", // Push all registers
+                    "xchg bx, bx",
+                    "push rax",
+                    "push rbx",
+                    "push rcx",
+                    "push rdx",
                     "push rbp",
                     "push rdi",
                     "push rsi",
-                    "mov rdx, [rsp + 4*9]" // Load the error code
-                    "mov rdi, rsp", // Load the ExceptionStackFrame
-                    "mov rsi, {0}", // Load the exception id
-                    "add rdi, 4*8", // Adjust for the pushed variables
-                    "sub rsp, 8", // Align the stack pointer
-                    "call {1}", // Call the handler
-                    "pop rsi", // Pop all registers
+                    "push r8",
+                    "push r9",
+                    "push r10",
+                    "push r11",
+                    "push r12",
+                    "push r13",
+                    "push r14",
+                    "push r15",
+                    "mov rdi, rsp",
+                    "mov rsi, {0}",
+                    "add rdi, 4*8",
+                    "call {1}",
+                    "pop r15",
+                    "pop r14",
+                    "pop r13",
+                    "pop r12",
+                    "pop r11",
+                    "pop r10",
+                    "pop r9",
+                    "pop r8",
+                    "pop rsi",
                     "pop rdi",
                     "pop rbp",
+                    "pop rdx",
+                    "pop rcx",
+                    "pop rbx",
                     "pop rax",
-                    "add rsp, 8",
+                    "xchg bx, bx",
                     "iretq",
                     const $exception_num,
-                    sym exception_handler,
+                    sym $func_name,
                     options(noreturn)
                 );
             }
         }
         wrapper
-    };
+    }};
 }
 
 macro_rules! setup_exception_handler {
-    ($exception_num: expr) => {{
+    ($func_name: ident, $exception_num: expr) => {{
         #[naked]
         extern "C" fn wrapper() -> ! {
             unsafe {
@@ -140,7 +156,7 @@ macro_rules! setup_exception_handler {
                     "pop rax",
                     "iretq",
                     const $exception_num,
-                    sym exception_handler,
+                    sym $func_name,
                     options(noreturn)
                 );
             }
@@ -149,11 +165,37 @@ macro_rules! setup_exception_handler {
     }};
 }
 
+#[derive(Clone, Copy, Debug)]
+enum PageFaultFlags {
+    IsPresent, // Caused by non present page
+    IsWrite,   // Caused by write access
+    IsUser,    // Page fault occured in user mode
+    IsReservedWrite,
+    IsInstructionFetch,
+    IsProtectionKey,
+    IsShadowStack,
+}
 
+impl PageFaultFlags {
+    fn iter() -> impl Iterator<Item = (usize, PageFaultFlags)> {
+        [
+            PageFaultFlags::IsPresent,
+            PageFaultFlags::IsWrite,
+            PageFaultFlags::IsUser,
+            PageFaultFlags::IsReservedWrite,
+            PageFaultFlags::IsInstructionFetch,
+            PageFaultFlags::IsProtectionKey,
+            PageFaultFlags::IsShadowStack,
+        ]
+        .iter()
+        .enumerate()
+        .map(|(index, &variant)| (index, variant))
+    }
+}
 
 extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id: usize) -> ! {
     match exception_id {
-        0..20 => {
+        0..32 => {
             print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
         }
         _ => {}
@@ -162,6 +204,29 @@ extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id:
     print_serial!("{:?}\n", stack_frame);
 
     loop {} // Need to remove this
+}
+
+extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame, interrupt_id: usize) {
+    match interrupt_id {
+        0x21 => {
+            print_serial!("Doing stuff\n");
+
+            // Handle keyboard
+            let scancode = inb(0x60);
+
+            let letter = translate(scancode, false);
+
+            if letter != '0' {
+                print_serial!("{}", letter);
+            }
+
+            PICS.lock().acknowledge(0x21 as u8);
+        }
+        0x2c => {
+            // Handle mouse
+        }
+        _ => {}
+    }
 }
 
 extern "C" fn exception_with_error_handler(
@@ -171,10 +236,14 @@ extern "C" fn exception_with_error_handler(
 ) -> ! {
     match exception_id {
         14 => {
-            // Handle page fault
+            // Handle page fault by displaying which flags are set within error code
             print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
 
-            
+            for (index, flag) in PageFaultFlags::iter() {
+                if ((index << 1) & error_code) != 0 {
+                    print_serial!("{:?} is SET\n", flag);
+                }
+            }
         }
         _ => {}
     }
@@ -184,42 +253,86 @@ extern "C" fn exception_with_error_handler(
     loop {} // Need to remove this
 }
 
+pub fn enable() {
+    unsafe {
+        asm!("sti");
+    }
+}
+
+pub fn disable() {
+    unsafe {
+        asm!("cld");
+    }
+}
+
+fn translate(scancode: u8, uppercase: bool) -> char {
+    if scancode > 0x3A {
+        return '0';
+    }
+
+    if uppercase {
+        return ((LETTERS[scancode as usize] as u8) - 0x20) as char;
+    } else {
+        return LETTERS[scancode as usize];
+    }
+}
+
+const LETTERS: &'static [char; 0x3A] = &[
+    '\0', '\0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\0', '\t', 'q', 'w',
+    'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n', '\0', 'a', 's', 'd', 'f', 'g', 'h',
+    'j', 'k', '\0', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',
+    '\0', '*', '\0', ' ',
+];
+
 pub fn init() {
     unsafe {
         // Setup all exceptions
         IDT[0] = IDTEntry::new(
             GateType::Trap,
             PrivilegeLevel::Ring3,
-            setup_exception_handler!(0),
+            setup_exception_handler!(exception_handler, 0),
         );
+
+        // IDT[0] = IDTEntry::new_best(
+        //     GateType::Trap,
+        //     PrivilegeLevel::Ring3,
+        //     (handle_no_err_exception0 as *const usize) as usize,
+        // );
 
         IDT[1] = IDTEntry::new(
             GateType::Trap,
             PrivilegeLevel::Ring3,
-            setup_exception_handler!(1),
+            setup_exception_handler!(exception_handler, 1),
         );
 
         IDT[3] = IDTEntry::new(
             GateType::Trap,
             PrivilegeLevel::Ring3,
-            setup_exception_handler!(3),
+            setup_exception_handler!(exception_handler, 3),
         );
 
         IDT[6] = IDTEntry::new(
             GateType::Trap,
             PrivilegeLevel::Ring3,
-            setup_exception_handler!(6),
+            setup_exception_handler!(exception_handler, 6),
         );
 
         // Setup exceptions with an error code
 
-        IDT[14] = IDTEntry::new(
-            GateType::Trap,
-            PrivilegeLevel::Ring3,
-            setup_exception_handler!(14),
-        );
+        // IDT[14] = IDTEntry::new(
+        //     GateType::Trap,
+        //     PrivilegeLevel::Ring3,
+        //     setup_exception_with_error_handler!(14),
+        // );
 
         // Interrupts
+
+        // Keyboard
+        IDT[0x21] = IDTEntry::new_test(
+            GateType::Interrupt,
+            PrivilegeLevel::Ring3,
+            setup_test_handler!(interrupt_handler, 0x21),
+        );
 
         // Syscalls
 
@@ -234,5 +347,6 @@ pub fn init() {
 }
 
 extern "C" {
+    fn handle_no_err_exception0(registers: ExceptionStackFrame);
     fn flush_idt();
 }

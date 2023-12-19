@@ -34,6 +34,40 @@ flush_idt:
   lidt [IDTR]
   ret
 
+%macro pushaq 0
+push rax
+push rbx
+push rcx
+push rdx
+push rsi
+push rdi
+%endmacro
+
+%macro popaq 0
+pop rdi
+pop rsi
+pop rdx
+pop rcx
+pop rbx
+pop rax
+%endmacro
+
+%macro handle_no_err_exception 1
+global handle_no_err_exception%1
+handle_no_err_exception%1:
+    xchg bx, bx
+    push qword 0 ; Dummy error code
+    push qword %1 ; Number
+    pushaq ; Push registers
+    cld
+    mov rax, 0xDEADBEEF
+    popaq
+    add rsp, 0x10 ; Must remove both 64 bit values pushed onto stack
+    iretq ; Exit from interrupt
+%endmacro
+
+handle_no_err_exception 0
+
 ; global flush_tlb
 ; flush_tlb:
 ;   push rax
