@@ -14,47 +14,43 @@ use core::arch::asm;
 
 const IDT_MAX_DESCRIPTIONS: usize = 8;
 
-pub type InterruptHandlerFunc = extern "C" fn();
+const EXCEPTION_MESSAGES: &'static [&'static str] = &[
+    "Divide By Zero",
+    "Debug",
+    "Non-maskable Interrupt",
+    "Breakpoint",
+    "Overflow",
+    "Bound Range Exceeded",
+    "Invalid Opcode",
+    "Device not Available",
+    "Double Fault",
+    "Coprocessor Segment Overrun",
+    "Invalid TSS",
+    "Segment Not Present",
+    "Stack-Segment Fault",
+    "General Protection Fault",
+    "Page Fault",
+    "Reserved",
+    "x87 Floating Point Exception",
+    "Alignment Check",
+    "Machine Check",
+    "SIMD Floating Point Exception",
+    "Virtualisation Exception",
+    "Control Exception",
+    "Hypervisor Injection Exception",
+    "Security Exception",
+    "Reserved",
+];
+
+pub type InterruptHandlerFunc = extern "C" fn() -> !;
 
 macro_rules! push_registers {
     () => {
-        // asm!("push rax
-        //       push rbx
-        //       push rcx
-        //       push rdx
-        //       push rbp
-        //       push rdi
-        //       push rsi
-        //       push r8
-        //       push r9
-        //       push r10
-        //       push r11
-        //       push r12
-        //       push r13
-        //       push r14
-        //       push r15
-        // " :::: "intel", "volatile");
-    };
-}
-
-macro_rules! pop_registers {
-    () => {
-        // asm!("pop r15
-        //       pop r14
-        //       pop r13
-        //       pop r12
-        //       pop r11
-        //       pop r10
-        //       pop r9
-        //       pop r8
-        //       pop rsi
-        //       pop rdi
-        //       pop rbp
-        //       pop rdx
-        //       pop rcx
-        //       pop rbx
-        //       pop rax
-        //     " :::: "intel", "volatile");
+        asm!(
+            "push rax", "push rbx", "push rcx", "push rdx", "push rbp", "push rdi", "push rsi",
+            "push r8", "push r9", "push r10", "push r11", "push r12", "push r13", "push r14",
+            "push r15"
+        );
     };
 }
 
@@ -68,26 +64,33 @@ struct ExceptionStackFrame {
     ss: u64,
 }
 
-macro_rules! exception_handler {
+macro_rules! setup_exception_handler {
     ($func_name: ident, $exception_num: expr) => {{
-        // #[naked]
-        extern "C" fn wrapper() {
-            //     unsafe {
-            //         push_registers!();
-            //         asm!("
-            //               cld
-            //               mov rdi, rsp
-            //               mov rsi, $1  // move the number to rsi
-            //               add rdi, 9*8 // skip exception stack frame pointer
-            //               call $0"
-            //               :: "i"($func_name as extern "C" fn(
-            //                   &ExceptionStackFrame)), "i"(exception_num)
-            //               : "rdi", "rsi" : "intel");
+        const test: usize = $exception_num;
 
-            //         pop_registers!();
-            //         asm!("iretq" :::: "intel", "volatile");
-            //         ::core::intrinsics::unreachable();
-            //     }
+        #[naked]
+        extern "C" fn wrapper() -> ! {
+            unsafe {
+                asm!(
+                    "cld",
+                    "push rax",
+                    "push rbp",
+                    "push rdi",
+                    "push rsi",
+                    "mov rdi, rsp",
+                    "mov rsi, {0}",
+                    "add rdi, 4*8",
+                    "call {1}",
+                    "pop rsi",
+                    "pop rdi",
+                    "pop rbp",
+                    "pop rax",
+                    "iretq",
+                    const $exception_num,
+                    sym exception_handler,
+                    options(noreturn)
+                );
+            }
         }
         wrapper
     }};
@@ -167,9 +170,17 @@ static mut IDT: [IDTEntry; IDT_MAX_DESCRIPTIONS] = [IDTEntry {
     reserved: 0,
 }; IDT_MAX_DESCRIPTIONS];
 
-extern "C" fn divide_by_zero_handler() -> ! {
-    print_serial!("EXCEPTION: DIVIDE BY ZERO");
-    loop {}
+extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id: usize) -> ! {
+    match exception_id {
+        0..20 => {
+            print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
+        }
+        _ => {}
+    }
+
+    print_serial!("{:?}\n", stack_frame);
+
+    loop {} // Need to remove this
 }
 
 pub fn init() {
@@ -178,14 +189,14 @@ pub fn init() {
         IDT[0] = IDTEntry::new(
             GateType::Trap,
             PrivilegeLevel::Ring3,
-            exception_handler!(divide_by_zero_handler, 0),
+            setup_exception_handler!(exception_handler, 0),
         );
 
         // Interrupts
 
         // Syscalls
 
-        // Actually set the IDT values
+        // Actually set the IDTR values
         let idt_address = (&IDT[0] as *const IDTEntry) as u64;
         IDTR.limit = (core::mem::size_of::<IDTEntry>() as u16) * (IDT_MAX_DESCRIPTIONS as u16 - 1);
         IDTR.base = idt_address;

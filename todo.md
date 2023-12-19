@@ -4,3 +4,4 @@
 - Parse the multiboot properly
 - Figure whether TSS is needed
 - Change interrupts to allow for simple more flags (present, user, etc just more customisable)
+- Bochs breakpoint is xchg bx, bx
