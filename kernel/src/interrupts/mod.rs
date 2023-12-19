@@ -6,14 +6,22 @@ Interrupts are a more efficient solution than polling devices
 An interrupt descriptor table defines what each interrupt will do (First 32 Exceptions)
 */
 
+use crate::interrupts::idt::GateType;
+use crate::interrupts::idt::IDTEntry;
+use crate::interrupts::idt::PrivilegeLevel;
+use crate::interrupts::idt::IDT;
+use crate::interrupts::idt::IDTR;
+use crate::interrupts::idt::IDT_MAX_DESCRIPTIONS;
+
 #[warn(unused_assignments)]
 use crate::print_serial;
 use crate::CONSOLE;
 
+mod idt;
+
 use core::arch::asm;
 
-const IDT_MAX_DESCRIPTIONS: usize = 8;
-
+// TODO: Replace with a hashmap
 const EXCEPTION_MESSAGES: &'static [&'static str] = &[
     "Divide By Zero",
     "Debug",
@@ -36,10 +44,24 @@ const EXCEPTION_MESSAGES: &'static [&'static str] = &[
     "Machine Check",
     "SIMD Floating Point Exception",
     "Virtualisation Exception",
-    "Control Exception",
+    "Control Protection  Exception",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
     "Hypervisor Injection Exception",
+    "VMM Communication Exception",
     "Security Exception",
     "Reserved",
+    "Triple Fault",
+    "FPU Error Interrupt",
+];
+
+const STATIC_NUMBERS: [usize; 32] = [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+    27, 28, 29, 30, 31, 32,
 ];
 
 pub type InterruptHandlerFunc = extern "C" fn() -> !;
@@ -64,10 +86,41 @@ struct ExceptionStackFrame {
     ss: u64,
 }
 
-macro_rules! setup_exception_handler {
-    ($func_name: ident, $exception_num: expr) => {{
-        const test: usize = $exception_num;
+macro_rules! setup_exception_with_error_handler {
+    ($exception_num: expr) => {
+        #[naked]
+        extern "C" fn wrapper() -> ! {
+            unsafe {
+                asm!(
+                    "cld",
+                    "push rax", // Push all registers
+                    "push rbp",
+                    "push rdi",
+                    "push rsi",
+                    "mov rdx, [rsp + 4*9]" // Load the error code
+                    "mov rdi, rsp", // Load the ExceptionStackFrame
+                    "mov rsi, {0}", // Load the exception id
+                    "add rdi, 4*8", // Adjust for the pushed variables
+                    "sub rsp, 8", // Align the stack pointer
+                    "call {1}", // Call the handler
+                    "pop rsi", // Pop all registers
+                    "pop rdi",
+                    "pop rbp",
+                    "pop rax",
+                    "add rsp, 8",
+                    "iretq",
+                    const $exception_num,
+                    sym exception_handler,
+                    options(noreturn)
+                );
+            }
+        }
+        wrapper
+    };
+}
 
+macro_rules! setup_exception_handler {
+    ($exception_num: expr) => {{
         #[naked]
         extern "C" fn wrapper() -> ! {
             unsafe {
@@ -96,79 +149,7 @@ macro_rules! setup_exception_handler {
     }};
 }
 
-#[derive(Copy, Clone)]
-#[repr(C)]
-struct IDTEntry {
-    isr_low: u16,   // Lower 16 bits of the ISR's address
-    kernel_cs: u16, // GDT segment selector that CPU loads before calling ISR
-    ist: u8,        // IST in TSS which CPU will load into RSP (zero currently)
-    attributes: u8, // Type and attributes
-    isr_mid: u16,   // Higher 16 bits of the lower 32 bits of ISR's address
-    isr_high: u32,  // Higher 32 bits of ISR's address
-    reserved: u32,  // Set to zero
-}
 
-impl IDTEntry {
-    pub fn new(
-        gate_type: GateType,
-        privilege_level: PrivilegeLevel,
-        func_addr_raw: InterruptHandlerFunc,
-    ) -> IDTEntry {
-        let func_addr = func_addr_raw as usize;
-
-        return IDTEntry {
-            isr_low: (func_addr & 0xFFFF) as u16,
-            kernel_cs: 0x08,
-            ist: 0,
-            attributes: IDTEntry::generate_flags((gate_type, privilege_level)),
-            isr_mid: ((func_addr >> 16) & 0xFFFF) as u16,
-            isr_high: (func_addr >> 32) as u32,
-            reserved: 0,
-        };
-    }
-
-    fn generate_flags(data: (GateType, PrivilegeLevel)) -> u8 {
-        let mut attributes: u8 = match data.0 {
-            GateType::Trap => 0x8F,
-            GateType::Interrupt => 0x8E,
-        };
-
-        attributes = match data.1 {
-            PrivilegeLevel::Ring3 => attributes | (1 << 5) | (1 << 6),
-            _ => attributes,
-        };
-
-        return attributes;
-    }
-}
-
-#[repr(C, packed)]
-struct Idtr {
-    limit: u16, // Memory taken up by IDT in bytes ((256 - 1) * 16)
-    base: u64,  // Base address of IDT
-}
-
-enum GateType {
-    Interrupt,
-    Trap, // For exceptions
-}
-
-enum PrivilegeLevel {
-    Ring0, // Kernel mode
-    Ring3, // User mode
-}
-
-#[no_mangle]
-static mut IDTR: Idtr = Idtr { limit: 0, base: 0 };
-static mut IDT: [IDTEntry; IDT_MAX_DESCRIPTIONS] = [IDTEntry {
-    isr_low: 0,
-    kernel_cs: 0,
-    ist: 0,
-    attributes: 0,
-    isr_mid: 0,
-    isr_high: 0,
-    reserved: 0,
-}; IDT_MAX_DESCRIPTIONS];
 
 extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id: usize) -> ! {
     match exception_id {
@@ -183,13 +164,59 @@ extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id:
     loop {} // Need to remove this
 }
 
+extern "C" fn exception_with_error_handler(
+    stack_frame: &ExceptionStackFrame,
+    exception_id: usize,
+    error_code: usize,
+) -> ! {
+    match exception_id {
+        14 => {
+            // Handle page fault
+            print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
+
+            
+        }
+        _ => {}
+    }
+
+    print_serial!("{:?}\n", stack_frame);
+
+    loop {} // Need to remove this
+}
+
 pub fn init() {
     unsafe {
-        // Exceptions
+        // Setup all exceptions
         IDT[0] = IDTEntry::new(
             GateType::Trap,
             PrivilegeLevel::Ring3,
-            setup_exception_handler!(exception_handler, 0),
+            setup_exception_handler!(0),
+        );
+
+        IDT[1] = IDTEntry::new(
+            GateType::Trap,
+            PrivilegeLevel::Ring3,
+            setup_exception_handler!(1),
+        );
+
+        IDT[3] = IDTEntry::new(
+            GateType::Trap,
+            PrivilegeLevel::Ring3,
+            setup_exception_handler!(3),
+        );
+
+        IDT[6] = IDTEntry::new(
+            GateType::Trap,
+            PrivilegeLevel::Ring3,
+            setup_exception_handler!(6),
+        );
+
+        // Setup exceptions with an error code
+
+        IDT[14] = IDTEntry::new(
+            GateType::Trap,
+            PrivilegeLevel::Ring3,
+            setup_exception_handler!(14),
         );
 
         // Interrupts
