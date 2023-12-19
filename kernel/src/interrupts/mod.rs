@@ -20,6 +20,7 @@ use crate::CONSOLE;
 
 mod idt;
 pub mod pic;
+mod pit;
 
 use core::arch::asm;
 

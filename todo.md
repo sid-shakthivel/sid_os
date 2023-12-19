@@ -6,17 +6,7 @@
 - Change interrupts to allow for simple more flags (present, user, etc just more customisable)
 - Bochs breakpoint is xchg bx, bx
 - https://wiki.osdev.org/Exceptions
-- Pretty sure leaving an interrupt fails so will need to debug or pit
-
-// macro_rules! push_registers {
-//     () => {
-//         asm!(
-//             "push rax", "push rbx", "push rcx", "push rdx", "push rbp", "push rdi", "push rsi",
-//             "push r8", "push r9", "push r10", "push r11", "push r12", "push r13", "push r14",
-//             "push r15"
-//         );
-//     };
-// }
+- https://wiki.osdev.org/Programmable_Interval_Timer
 
 macro_rules! setup_exception_with_error_handler {
     ($exception_num: expr) => {{
