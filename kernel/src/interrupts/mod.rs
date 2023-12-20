@@ -161,9 +161,8 @@ macro_rules! setup_general_interrupt_handler {
     }};
 }
 
-// Specifically for multitasking
 macro_rules! setup_pit_handler {
-    ($func_name: ident, $interrupt_num: expr) => {{
+    ($interrupt_num: expr) => {
         #[naked]
         extern "C" fn wrapper() -> ! {
             unsafe {
@@ -204,9 +203,10 @@ macro_rules! setup_pit_handler {
                     sym exception_with_error_handler,
                     options(noreturn)
                 );
+            }
         }
         wrapper
-    }};
+    };
 }
 
 #[derive(Clone, Copy, Debug)]

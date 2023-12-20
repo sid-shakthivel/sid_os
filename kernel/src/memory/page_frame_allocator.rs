@@ -92,6 +92,8 @@ impl PageFrameAllocator {
     // Add the address of the free'd page to the stack
     pub unsafe fn free_page_frame(&mut self, frame_address: *mut usize) {
         let new_free_frame = unsafe { &mut *(frame_address as *mut PageFrame) };
+
+        // TODO: Clear all data within the page frame
         self.free_page_frames
             .as_mut()
             .expect("Shouldn't be none")
@@ -99,7 +101,7 @@ impl PageFrameAllocator {
     }
 
     // Allocates a continuous amount of pages subsequently
-    fn alloc_page_frames(&mut self, pages_required: usize) -> *mut usize {
+    pub fn alloc_page_frames(&mut self, pages_required: usize) -> *mut usize {
         let address = self.current_page;
         for _i in 0..pages_required {
             self.current_page += 4096;
@@ -108,7 +110,7 @@ impl PageFrameAllocator {
     }
 
     // Frees a continuous amount of memory
-    fn free_page_frames(&mut self, frame_address: *mut usize, pages_required: usize) {
+    pub fn free_page_frames(&mut self, frame_address: *mut usize, pages_required: usize) {
         for i in 0..pages_required {
             unsafe { self.free_page_frame(frame_address.offset(i as isize)) }
         }
@@ -154,6 +156,10 @@ impl FreeStack {
 
 pub fn round_to_nearest_page(size: usize) -> usize {
     ((size as i64 + 4095) & (-4096)) as usize
+}
+
+pub fn get_page_number(size: usize) -> usize {
+    size / (PAGE_SIZE as usize)
 }
 
 pub static PAGE_FRAME_ALLOCATOR: Lock<PageFrameAllocator> = Lock::new(PageFrameAllocator::new());
