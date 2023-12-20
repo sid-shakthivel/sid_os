@@ -88,3 +88,43 @@ impl<T> List<T> {
         }
     }
 }
+
+impl<'a, T> IntoIterator for &'a List<T> {
+    type Item = Option<&'a ListNode<T>>;
+    type IntoIter = ListIntoIterator<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ListIntoIterator {
+            current: match self.head {
+                Some(head) => unsafe { Some(&*head) },
+                _ => None,
+            },
+        }
+    }
+}
+
+/// Iterator for the List
+pub struct ListIntoIterator<'a, T: 'static> {
+    current: Option<&'a ListNode<T>>,
+}
+
+impl<'a, T> Iterator for ListIntoIterator<'a, T> {
+    type Item = Option<&'a ListNode<T>>;
+    // type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.current {
+            Some(node) => {
+                let saved_current = self.current;
+
+                self.current = match node.next {
+                    Some(value) => unsafe { Some(&*value) },
+                    None => None,
+                };
+
+                return Some(saved_current);
+            }
+            None => None,
+        }
+    }
+}

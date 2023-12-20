@@ -16,7 +16,6 @@ const NODE_MEMORY_BLOCK_SIZE: isize = (core::mem::size_of::<ListNode<MemoryBlock
    | Header | Data | Align |
    +--------+------+-------+
 */
-
 #[derive(Clone, Debug, PartialEq)]
 struct MemoryBlock {
     size: usize,      // Value in bytes
@@ -85,31 +84,35 @@ pub fn kmalloc(mut size: usize) -> *mut usize {
 /*
     Recives pointer to memory address
     Frees a memory region which can later be allocated
+    Only use this function if we decide to purely use this kmalloc/kfree instead of pfa stuff
+    Perhaps check if memories are subsequent
 */
 pub fn kfree(dp: *mut usize) {
     let header_address = unsafe { get_header_address(dp) };
     let header = unsafe { &mut *(header_address as *mut ListNode<MemoryBlock>) };
 
-    // Add node to linked list of free nodes
-    // FREE_MEMORY_BLOCK_LIST
-    //     .lock()
-    //     .push_at_address(header_address as u64, header.payload.clone());
-    // FREE_MEMORY_BLOCK_LIST.free();
+    // Add block to list of free blocks (will be at the end)
+    FREE_MEMORY_BLOCK_LIST
+        .lock()
+        .push(header.payload.clone(), header_address as usize);
+    FREE_MEMORY_BLOCK_LIST.free();
 
     // Check next node to merge memory regions together to alleviate fragmentation
-    // NOTE: Since a stack is used, the node is added to the top of the stack so there is only a next
-    // if let Some(next_node) = header.next {
-    // Check if nodes are adjacent
+    // TODO: Add support for more nodes (prev as well)
 
-    // let next_header = unsafe { &mut *next_node };
+    if let Some(next_node) = header.next {
+        let next_header = unsafe { &mut *next_node };
 
-    // // Get total size of other region and update memory block
-    // header.payload.size += next_header.payload.size;
+        // Get total size of other region and update memory block
+        header.payload.size += next_header.payload.size;
 
-    // // Remove other region from linked list since updated
-    // FREE_MEMORY_BLOCK_LIST.lock().remove(next_header);
-    // FREE_MEMORY_BLOCK_LIST.free();
-    // }
+        // Remove other region from linked list since updated
+        let length = FREE_MEMORY_BLOCK_LIST.lock().length;
+        FREE_MEMORY_BLOCK_LIST.free();
+
+        FREE_MEMORY_BLOCK_LIST.lock().remove_at(length - 1);
+        FREE_MEMORY_BLOCK_LIST.free();
+    }
 }
 
 /*
@@ -125,13 +128,13 @@ fn align(size: usize) -> usize {
     Returns first memory block which fits the size
 */
 fn find_first_fit(size: usize) -> (usize, Option<MemoryBlock>) {
-    // for (i, memory_block) in FREE_MEMORY_BLOCK_LIST.lock().into_iter().enumerate() {
-    //     if memory_block.unwrap().payload.size > size {
-    //         FREE_MEMORY_BLOCK_LIST.free();
-    //         return (i as usize, Some(memory_block.unwrap().payload.clone()));
-    //     }
-    // }
-    // FREE_MEMORY_BLOCK_LIST.free();
+    for (i, memory_block) in FREE_MEMORY_BLOCK_LIST.lock().into_iter().enumerate() {
+        if memory_block.unwrap().payload.size > size {
+            FREE_MEMORY_BLOCK_LIST.free();
+            return (i as usize, Some(memory_block.unwrap().payload.clone()));
+        }
+    }
+    FREE_MEMORY_BLOCK_LIST.free();
     return (0, None);
 }
 
@@ -150,23 +153,23 @@ pub fn extend_memory_region(pages: usize) {
     Recieves size of block and address in which to create a new block
 */
 fn create_new_memory_block(size: usize, address: *mut usize, is_free: bool) -> *mut usize {
-    let dp_address = unsafe { address.offset(NODE_MEMORY_BLOCK_SIZE) };
-    let new_memory_block = MemoryBlock::new(dp_address, size);
+    let dp_addr = unsafe { address.offset(NODE_MEMORY_BLOCK_SIZE) };
+    let new_memory_block = MemoryBlock::new(dp_addr, size);
 
-    // if is_free {
-    //     // Push to linked list
-    //     FREE_MEMORY_BLOCK_LIST
-    //         .lock()
-    //         .push_at_address(address as usize, new_memory_block);
-    //     FREE_MEMORY_BLOCK_LIST.free();
-    // } else {
-    //     // Add meta data regardless
-    //     unsafe {
-    //         *(address as *mut MemoryBlock) = new_memory_block;
-    //     }
-    // }
+    if is_free {
+        // Push to linked list
+        FREE_MEMORY_BLOCK_LIST
+            .lock()
+            .push(new_memory_block, dp_addr as usize);
+        FREE_MEMORY_BLOCK_LIST.free();
+    } else {
+        // Add meta data regardless
+        unsafe {
+            *(address as *mut MemoryBlock) = new_memory_block;
+        }
+    }
 
-    return dp_address;
+    return dp_addr;
 }
 
 /*
