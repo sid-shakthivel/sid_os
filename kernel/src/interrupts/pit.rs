@@ -16,7 +16,7 @@ const INPUT_CLOCK: usize = 1193180;
 const FREQUENCY: usize = 100;
 
 impl Pit {
-    pub fn new(frequency: usize) -> Pit {
+    pub const fn new(frequency: usize) -> Pit {
         Pit {
             ticks: 0,
             divisor: INPUT_CLOCK / frequency,
@@ -32,7 +32,6 @@ impl Pit {
 
     pub fn handle_timer(&mut self) {
         self.ticks += 1;
-        self.set_frequency();
     }
 
     fn set_frequency(&self) {
@@ -41,3 +40,5 @@ impl Pit {
         outb(0x40, (self.divisor >> 8) as u8);
     }
 }
+
+pub static PIT: Lock<Pit> = Lock::new(Pit::new(FREQUENCY));

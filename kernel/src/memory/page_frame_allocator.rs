@@ -3,21 +3,22 @@ Physical memory is split into 4096 byte chunks called page frames
 To manage the frames, a stack of free pages along with a pointer to first page are used
 */
 
-use crate::utils::spinlock::Lock;
+use crate::{print_serial, utils::spinlock::Lock, CONSOLE};
 
 const PAGE_SIZE: usize = 4096;
 
-#[derive(Clone, Copy)]
+#[derive(Debug)]
 pub struct PageFrame {
     pub next: Option<*mut PageFrame>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug)]
 pub struct FreeStack {
     pub top: Option<*mut PageFrame>,
     pub length: usize,
 }
 
+#[derive(Debug)]
 pub struct PageFrameAllocator {
     memory_start: usize,
     memory_end: usize,
@@ -42,7 +43,8 @@ impl PageFrameAllocator {
     }
 
     pub fn init(&mut self, mut memory_start: usize, mut memory_end: usize) {
-        memory_start = round_to_nearest_page(memory_start);
+        // TODO: Fix this because literally adding a page purely for safety
+        memory_start = round_to_nearest_page(memory_start) + 0x1000;
         memory_end = round_to_nearest_page(memory_end);
 
         self.memory_start = memory_start + (PAGE_SIZE * 2);
@@ -120,7 +122,7 @@ impl FreeStack {
     }
 
     pub fn is_empty(&self) -> bool {
-        return self.length > 0;
+        return self.length == 0;
     }
 
     // TODO: Might want to refactor!?

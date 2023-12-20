@@ -19,6 +19,10 @@ Page table entries have a certain 64 bit format which looks like this:
 +---------+-----------+------------------+---------------+---------------+-------+-----------+--------+-----------+------------------+-----------+------------+
 */
 
+use core::future::IntoFuture;
+
+use crate::{print_serial, CONSOLE};
+
 use super::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 
 pub const P4: *mut PageTable = 0xffffffff_fffff000 as *mut _;
@@ -95,10 +99,11 @@ impl PageTable {
             let index = (v_addr >> (level * 9 + 12)) & 0x1FF;
 
             if self.entries[index].is_unused() {
+                // Create a new page table
                 let pf_addr = PAGE_FRAME_ALLOCATOR
                     .lock()
                     .alloc_page_frame()
-                    .expect("Ran out of memory") as usize;
+                    .expect("PFA Ran out of memory") as usize;
                 PAGE_FRAME_ALLOCATOR.free();
 
                 self.entries[index] = Page::new(pf_addr, &flags)
@@ -111,18 +116,56 @@ impl PageTable {
         }
     }
 
+    fn unmap_recursive(&mut self, v_addr: usize, level: usize) {
+        if (level == 0) {
+            let p1_index = (v_addr >> 12) & 0x1FF;
+            self.entries[p1_index].set_to_unused();
+        } else {
+            let index = (v_addr >> (level * 9 + 12)) & 0x1FF;
+
+            self.entries[index].set_to_unused();
+
+            self.drop();
+        }
+    }
+
+    // Frees a table if it becomes unused
+    fn drop(&mut self) {
+        let mut count: usize = 0;
+
+        for i in 0..512 {
+            if self.entries[0].is_unused() {
+                count += 1;
+            }
+        }
+
+        if (count == 512) {
+            unsafe {
+                let p_addr = self as *const _ as *mut usize;
+                PAGE_FRAME_ALLOCATOR.lock().free_page_frame(p_addr);
+                PAGE_FRAME_ALLOCATOR.free();
+            }
+        }
+    }
+
+    fn umap(&mut self, v_addr: usize) {
+        self.unmap_recursive(v_addr, 3);
+    }
+
     fn map(&mut self, v_addr: usize, p_addr: usize) {
-        self.map_recursive(v_addr, p_addr, 3);
+        self.map_recursive(v_addr, p_addr, 3); // Level starts at 3 as 0..3
     }
 }
 
 pub fn map_page(p_addr: usize, v_addr: usize, is_user: bool) {
-    // Need to recursively loop through the address and create tables if neccessary
-
     unsafe {
         (*P4).map(v_addr, p_addr);
 
-        // Translation lookaside buffer - cashes the translation of virtual to physical addresses and needs to be updated manually
+        /*
+            Translation Lookaside Buffer
+            Cashes the translation of virtual to physical addresses
+            Updated manually
+        */
         flush_tlb();
     }
 }
