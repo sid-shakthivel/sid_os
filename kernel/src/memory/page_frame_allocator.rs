@@ -7,10 +7,12 @@ use crate::utils::spinlock::Lock;
 
 const PAGE_SIZE: usize = 4096;
 
+#[derive(Clone, Copy)]
 pub struct PageFrame {
     pub next: Option<*mut PageFrame>,
 }
 
+#[derive(Clone, Copy)]
 pub struct FreeStack {
     pub top: Option<*mut PageFrame>,
     pub length: usize,
@@ -19,7 +21,7 @@ pub struct FreeStack {
 pub struct PageFrameAllocator {
     memory_start: usize,
     memory_end: usize,
-    pub free_page_frames: &'static mut FreeStack,
+    pub free_page_frames: Option<&'static mut FreeStack>,
     pub current_page: usize,
 }
 
@@ -30,11 +32,11 @@ impl PageFrame {
 }
 
 impl PageFrameAllocator {
-    pub fn new() -> PageFrameAllocator {
+    pub const fn new() -> PageFrameAllocator {
         PageFrameAllocator {
             memory_start: 0,
             memory_end: 0,
-            free_page_frames: unsafe { &mut *((0) as *mut FreeStack) },
+            free_page_frames: None,
             current_page: 0,
         }
     }
@@ -45,7 +47,8 @@ impl PageFrameAllocator {
 
         self.memory_start = memory_start + (PAGE_SIZE * 2);
         self.memory_end = memory_end;
-        self.free_page_frames = unsafe { &mut *((memory_start + PAGE_SIZE) as *mut FreeStack) };
+        self.free_page_frames =
+            unsafe { Some(&mut *((memory_start + PAGE_SIZE) as *mut FreeStack)) };
         self.current_page = memory_start + (PAGE_SIZE * 2);
     }
 
@@ -54,7 +57,12 @@ impl PageFrameAllocator {
        Else return the address of the current page and increment
     */
     pub fn alloc_page_frame(&mut self) -> Option<*mut usize> {
-        if self.free_page_frames.is_empty() {
+        if self
+            .free_page_frames
+            .as_mut()
+            .expect("Shouldn't be none")
+            .is_empty()
+        {
             // Check if over memory limit
             let address = self.current_page;
 
@@ -65,7 +73,12 @@ impl PageFrameAllocator {
                 return Some(self.current_page as *mut usize);
             }
         } else {
-            match self.free_page_frames.pop() {
+            match self
+                .free_page_frames
+                .as_mut()
+                .expect("Shouldn't be none")
+                .pop()
+            {
                 Some(page_frame) => unsafe {
                     return Some((*page_frame).get_address() as *mut usize);
                 },
@@ -77,7 +90,10 @@ impl PageFrameAllocator {
     // Add the address of the free'd page to the stack
     pub unsafe fn free_page_frame(&mut self, frame_address: *mut usize) {
         let new_free_frame = unsafe { &mut *(frame_address as *mut PageFrame) };
-        self.free_page_frames.push(new_free_frame);
+        self.free_page_frames
+            .as_mut()
+            .expect("Shouldn't be none")
+            .push(new_free_frame);
     }
 
     // Allocates a continuous amount of pages subsequently

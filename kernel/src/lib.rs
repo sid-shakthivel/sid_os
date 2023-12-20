@@ -5,6 +5,7 @@
 #![allow(warnings)]
 #![feature(asm_const)]
 #![feature(exclusive_range_pattern)]
+#![feature(const_mut_refs)]
 
 mod interrupts;
 mod memory;

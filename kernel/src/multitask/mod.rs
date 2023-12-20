@@ -21,7 +21,6 @@ pub struct Process {
     pub rsp: *const usize,
     pub process_priority: ProcessPriority,
     pub time_taken: usize,
-    pub name: &str,
     // pub cr3: *mut Table,
 }
 
@@ -35,7 +34,7 @@ pub enum ProcessPriority {
 impl Process {
     // The entrypoint for each process is 0x800000 which has already been mapped into memory
     pub fn init(priority: ProcessPriority, pid: usize) -> Process {
-        let mut rsp: *const usize = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap();
+        let mut rsp: *mut usize = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap();
         PAGE_FRAME_ALLOCATOR.free();
 
         unsafe {
@@ -75,7 +74,6 @@ impl Process {
             pid: pid,
             rsp: rsp,
             process_priority: priority,
-            name: "Process",
             time_taken: 0,
         }
     }

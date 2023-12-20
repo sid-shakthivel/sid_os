@@ -36,13 +36,13 @@ flush_idt:
   lidt [IDTR]
   ret
 
-; global flush_tlb
-; flush_tlb:
-;   push rax
-;   mov rax, cr3
-;   mov cr3, rax
-;   pop rax
-;   ret
+global flush_tlb
+flush_tlb:
+  push rax
+  mov rax, cr3
+  mov cr3, rax
+  pop rax
+  ret
 
 ; global speedy_write
 ; speedy_write:
