@@ -84,10 +84,10 @@ impl ChainedPics {
         outb(self.slave.data, 1);
         io_wait();
 
-        // f9 - kbd, slave, f8 - kbd, slave, pit
-        // ef - mouse
-        outb(self.master.data, 0xf9);
-        // outb(self.slave.data, 0xef); // Mouse
+        // f9 - kbd, slave, f8 - kbd, slave, pit, fd - kbd
+        // ef - mouse, ff - completely disable
+        outb(self.master.data, 0xfd);
+        outb(self.slave.data, 0xff);
         io_wait();
     }
 }

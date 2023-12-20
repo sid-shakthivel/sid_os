@@ -3,6 +3,8 @@ Physical memory is split into 4096 byte chunks called page frames
 To manage the frames, a stack of free pages along with a pointer to first page are used
 */
 
+use crate::utils::spinlock::Lock;
+
 const PAGE_SIZE: usize = 4096;
 
 pub struct PageFrame {
@@ -28,18 +30,23 @@ impl PageFrame {
 }
 
 impl PageFrameAllocator {
-    pub fn new(mut memory_start: usize, mut memory_end: usize) -> PageFrameAllocator {
+    pub fn new() -> PageFrameAllocator {
+        PageFrameAllocator {
+            memory_start: 0,
+            memory_end: 0,
+            free_page_frames: unsafe { &mut *((0) as *mut FreeStack) },
+            current_page: 0,
+        }
+    }
+
+    pub fn init(&mut self, mut memory_start: usize, mut memory_end: usize) {
         memory_start = round_to_nearest_page(memory_start);
         memory_end = round_to_nearest_page(memory_end);
 
-        let page_frame_allocator = PageFrameAllocator {
-            memory_start: memory_start + (PAGE_SIZE * 2),
-            memory_end,
-            free_page_frames: unsafe { &mut *((memory_start + PAGE_SIZE) as *mut FreeStack) },
-            current_page: memory_start + (PAGE_SIZE * 2),
-        };
-
-        return page_frame_allocator;
+        self.memory_start = memory_start + (PAGE_SIZE * 2);
+        self.memory_end = memory_end;
+        self.free_page_frames = unsafe { &mut *((memory_start + PAGE_SIZE) as *mut FreeStack) };
+        self.current_page = memory_start + (PAGE_SIZE * 2);
     }
 
     /*
@@ -130,3 +137,5 @@ impl FreeStack {
 pub fn round_to_nearest_page(size: usize) -> usize {
     ((size as i64 + 4095) & (-4096)) as usize
 }
+
+pub static PAGE_FRAME_ALLOCATOR: Lock<PageFrameAllocator> = Lock::new(PageFrameAllocator::new());

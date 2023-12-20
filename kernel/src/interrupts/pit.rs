@@ -16,7 +16,7 @@ const INPUT_CLOCK: usize = 1193180;
 const FREQUENCY: usize = 100;
 
 impl Pit {
-    pub fn new(frequency: u64) -> Pit {
+    pub fn new(frequency: usize) -> Pit {
         Pit {
             ticks: 0,
             divisor: INPUT_CLOCK / frequency,

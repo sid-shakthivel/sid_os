@@ -6,28 +6,25 @@ Interrupts are a more efficient solution than polling devices
 An interrupt descriptor table defines what each interrupt will do (First 32 Exceptions)
 */
 
+use self::pic::PicFunctions;
+use self::pic::PICS;
+#[warn(unused_assignments)]
 use crate::interrupts::idt::GateType;
 use crate::interrupts::idt::IDTEntry;
 use crate::interrupts::idt::PrivilegeLevel;
 use crate::interrupts::idt::IDT;
 use crate::interrupts::idt::IDTR;
 use crate::interrupts::idt::IDT_MAX_DESCRIPTIONS;
-use crate::utils::ports::inb;
-
-#[warn(unused_assignments)]
 use crate::print_serial;
+use crate::utils::ports::inb;
 use crate::CONSOLE;
+
+use core::arch::asm;
 
 mod idt;
 pub mod pic;
 mod pit;
 
-use core::arch::asm;
-
-use self::pic::PicFunctions;
-use self::pic::PICS;
-
-// TODO: Replace with a hashmap
 const EXCEPTION_MESSAGES: &'static [&'static str] = &[
     "Divide By Zero",
     "Debug",
@@ -70,8 +67,14 @@ const STATIC_NUMBERS: [usize; 32] = [
     27, 28, 29, 30, 31, 32,
 ];
 
+const LETTERS: &'static [char; 0x3A] = &[
+    '\0', '\0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\0', '\t', 'q', 'w',
+    'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n', '\0', 'a', 's', 'd', 'f', 'g', 'h',
+    'j', 'k', '\0', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',
+    '\0', '*', '\0', ' ',
+];
+
 pub type InterruptHandlerFunc = extern "C" fn() -> !;
-pub type TestHandlerFunc = extern "C" fn();
 
 #[derive(Debug)]
 #[repr(C)]
@@ -83,13 +86,68 @@ struct ExceptionStackFrame {
     ss: u64,
 }
 
-macro_rules! setup_test_handler {
-    ($func_name: ident, $exception_num: expr) => {{
+// Purely for exceptions with an error code eg page faults
+macro_rules! setup_exception_with_error_handler {
+    ($exception_num: expr) => {{
         #[naked]
-        extern "C" fn wrapper() {
+        extern "C" fn wrapper() -> ! {
             unsafe {
                 asm!(
-                    "xchg bx, bx",
+                    "push rax",
+                    "push rbx",
+                    "push rcx",
+                    "push rdx",
+                    "push rbp",
+                    "push rdi",
+                    "push rsi",
+                    "push r8",
+                    "push r9",
+                    "push r10",
+                    "push r11",
+                    "push r12",
+                    "push r13",
+                    "push r14",
+                    "push r15",
+                    "mov rdx, [rsp + 15*8]", // Load error code
+                    "mov rdi, rsp", // Load ExceptionStackFrame
+                    "mov rsi, {0}", // Load exception id
+                    "add rdi, 15*8",
+                    "sub rsp, 8", // Allign stack pointer
+                    "call {1}",
+                    "add rsp, 8", // Reallign stack pointer
+                    "pop r15",
+                    "pop r14",
+                    "pop r13",
+                    "pop r12",
+                    "pop r11",
+                    "pop r10",
+                    "pop r9",
+                    "pop r8",
+                    "pop rsi",
+                    "pop rdi",
+                    "pop rbp",
+                    "pop rdx",
+                    "pop rcx",
+                    "pop rbx",
+                    "pop rax",
+                    "iretq",
+                    const $exception_num,
+                    sym exception_with_error_handler,
+                    options(noreturn)
+                );
+            }
+        }
+        wrapper
+    }};
+}
+
+// Includes exceptions and general interrupts
+macro_rules! setup_general_interrupt_handler {
+    ($func_name: ident, $interrupt_num: expr) => {{
+        #[naked]
+        extern "C" fn wrapper() -> ! {
+            unsafe {
+                asm!(
                     "push rax",
                     "push rbx",
                     "push rcx",
@@ -107,7 +165,7 @@ macro_rules! setup_test_handler {
                     "push r15",
                     "mov rdi, rsp",
                     "mov rsi, {0}",
-                    "add rdi, 4*8",
+                    "add rdi, 15*8",
                     "call {1}",
                     "pop r15",
                     "pop r14",
@@ -124,39 +182,8 @@ macro_rules! setup_test_handler {
                     "pop rcx",
                     "pop rbx",
                     "pop rax",
-                    "xchg bx, bx",
                     "iretq",
-                    const $exception_num,
-                    sym $func_name,
-                    options(noreturn)
-                );
-            }
-        }
-        wrapper
-    }};
-}
-
-macro_rules! setup_exception_handler {
-    ($func_name: ident, $exception_num: expr) => {{
-        #[naked]
-        extern "C" fn wrapper() -> ! {
-            unsafe {
-                asm!(
-                    "cld",
-                    "push rax",
-                    "push rbp",
-                    "push rdi",
-                    "push rsi",
-                    "mov rdi, rsp",
-                    "mov rsi, {0}",
-                    "add rdi, 4*8",
-                    "call {1}",
-                    "pop rsi",
-                    "pop rdi",
-                    "pop rbp",
-                    "pop rax",
-                    "iretq",
-                    const $exception_num,
+                    const $interrupt_num,
                     sym $func_name,
                     options(noreturn)
                 );
@@ -194,7 +221,7 @@ impl PageFaultFlags {
     }
 }
 
-extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id: usize) -> ! {
+extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id: usize) {
     match exception_id {
         0..32 => {
             print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
@@ -203,38 +230,27 @@ extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id:
     }
 
     print_serial!("{:?}\n", stack_frame);
-
-    loop {} // Need to remove this
 }
 
-extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame, interrupt_id: usize) {
-    match interrupt_id {
-        0x21 => {
-            print_serial!("Doing stuff\n");
+extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame) {
+    // Handle keyboard
+    let scancode = inb(0x60);
 
-            // Handle keyboard
-            let scancode = inb(0x60);
+    let letter = translate(scancode, false);
 
-            let letter = translate(scancode, false);
-
-            if letter != '0' {
-                print_serial!("{}", letter);
-            }
-
-            PICS.lock().acknowledge(0x21 as u8);
-        }
-        0x2c => {
-            // Handle mouse
-        }
-        _ => {}
+    if letter != '0' {
+        print_serial!("{}", letter);
     }
+
+    PICS.lock().acknowledge(0x21 as u8);
+    PICS.free();
 }
 
 extern "C" fn exception_with_error_handler(
     stack_frame: &ExceptionStackFrame,
     exception_id: usize,
     error_code: usize,
-) -> ! {
+) {
     match exception_id {
         14 => {
             // Handle page fault by displaying which flags are set within error code
@@ -251,19 +267,7 @@ extern "C" fn exception_with_error_handler(
 
     print_serial!("{:?}\n", stack_frame);
 
-    loop {} // Need to remove this
-}
-
-pub fn enable() {
-    unsafe {
-        asm!("sti");
-    }
-}
-
-pub fn disable() {
-    unsafe {
-        asm!("cld");
-    }
+    loop {}
 }
 
 fn translate(scancode: u8, uppercase: bool) -> char {
@@ -278,61 +282,48 @@ fn translate(scancode: u8, uppercase: bool) -> char {
     }
 }
 
-const LETTERS: &'static [char; 0x3A] = &[
-    '\0', '\0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\0', '\t', 'q', 'w',
-    'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n', '\0', 'a', 's', 'd', 'f', 'g', 'h',
-    'j', 'k', '\0', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',
-    '\0', '*', '\0', ' ',
-];
-
 pub fn init() {
     unsafe {
-        // Setup all exceptions
+        // Setup exceptions
         IDT[0] = IDTEntry::new(
             GateType::Trap,
             PrivilegeLevel::Ring3,
-            setup_exception_handler!(exception_handler, 0),
+            setup_general_interrupt_handler!(exception_handler, 0),
         );
-
-        // IDT[0] = IDTEntry::new_best(
-        //     GateType::Trap,
-        //     PrivilegeLevel::Ring3,
-        //     (handle_no_err_exception0 as *const usize) as usize,
-        // );
 
         IDT[1] = IDTEntry::new(
             GateType::Trap,
             PrivilegeLevel::Ring3,
-            setup_exception_handler!(exception_handler, 1),
+            setup_general_interrupt_handler!(exception_handler, 1),
         );
 
         IDT[3] = IDTEntry::new(
             GateType::Trap,
             PrivilegeLevel::Ring3,
-            setup_exception_handler!(exception_handler, 3),
+            setup_general_interrupt_handler!(exception_handler, 3),
         );
 
         IDT[6] = IDTEntry::new(
             GateType::Trap,
             PrivilegeLevel::Ring3,
-            setup_exception_handler!(exception_handler, 6),
+            setup_general_interrupt_handler!(exception_handler, 6),
         );
 
         // Setup exceptions with an error code
 
-        // IDT[14] = IDTEntry::new(
-        //     GateType::Trap,
-        //     PrivilegeLevel::Ring3,
-        //     setup_exception_with_error_handler!(14),
-        // );
+        IDT[14] = IDTEntry::new(
+            GateType::Trap,
+            PrivilegeLevel::Ring3,
+            setup_exception_with_error_handler!(14),
+        );
 
         // Interrupts
 
         // Keyboard
-        IDT[0x21] = IDTEntry::new_test(
+        IDT[0x21] = IDTEntry::new(
             GateType::Interrupt,
             PrivilegeLevel::Ring3,
-            setup_test_handler!(interrupt_handler, 0x21),
+            setup_general_interrupt_handler!(interrupt_handler, 0x21),
         );
 
         // Syscalls
@@ -347,7 +338,18 @@ pub fn init() {
     }
 }
 
+pub fn enable() {
+    unsafe {
+        asm!("sti");
+    }
+}
+
+pub fn disable() {
+    unsafe {
+        asm!("cld");
+    }
+}
+
 extern "C" {
-    fn handle_no_err_exception0(registers: ExceptionStackFrame);
     fn flush_idt();
 }
