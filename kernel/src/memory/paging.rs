@@ -125,6 +125,11 @@ impl PageTable {
 
             self.entries[index].set_to_unused();
 
+            let next_level_table =
+                unsafe { &mut *((self.entries[index].0 & 0xFFFF_FFFF_F000) as *mut PageTable) };
+
+            next_level_table.unmap_recursive(v_addr, level - 1);
+
             self.drop();
         }
     }

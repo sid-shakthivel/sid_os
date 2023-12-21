@@ -1,53 +1,42 @@
-// /// Node for the priority queue
-// struct PriorityNode<T> {
-//     priority: usize,
-//     value: T,
-//     next: Option<*mut PriorityNode>,
-// }
+use super::list::{List, ListNode};
+use crate::memory::allocator::{kfree, kmalloc};
 
-// /// Priority Queue data structure
-// struct PriorityQueue<T> {
-//     front: Option<*mut PriorityNode>,
-//     rear: Option<*mut PriorityNode>,
-// }
+// A wrapper to add priority to any type
+#[derive(Clone, Copy)]
+struct PriorityWrapper<T> {
+    priority: usize,
+    value: T,
+}
 
-// impl PriorityQueue {
-//     fn new() -> Self {
-//         PriorityQueue {
-//             front: None,
-//             rear: None,
-//         }
-//     }
+impl<T> PriorityWrapper<T> {
+    pub fn new(payload: T, priority: usize) -> PriorityWrapper<T> {
+        PriorityWrapper {
+            priority,
+            value: payload,
+        }
+    }
+}
 
-//     fn enqueue(&mut self, priority: usize, value: usize) {
-//         let new_node = PriorityNode {
-//             priority,
-//             value,
-//             next: None
-//         };
+pub struct PriorityQueue<T: 'static> {
+    list: List<PriorityWrapper<T>>,
+}
 
-//         let new_node_ptr = Box::into_raw(new_node);
+impl<T: Clone> PriorityQueue<T> {
+    pub fn new() -> PriorityQueue<T> {
+        PriorityQueue { list: List::new() }
+    }
 
-//         if let Some(rear) = self.rear {
-//             unsafe {
-//                 (*rear).next = Some(new_node_ptr);
-//             }
-//         } else {
-//             self.front = Some(unsafe { Box::from_raw(new_node_ptr) });
-//         }
+    pub fn enqueue(&mut self, payload: T, priority: usize) {
+        let priority_wrapped_node = PriorityWrapper::new(payload, priority);
+        let addr = kmalloc(core::mem::size_of::<T>()) as usize;
 
-//         self.rear = Some(new_node_ptr);
-//     }
+        self.list.push_back(priority_wrapped_node, addr)
+    }
 
-//     fn dequeue(&mut self) -> Option<(usize, usize)> {
-//         self.front.take().map(|node| {
-//             let priority = node.priority;
-//             let value = node.value;
-//             self.front = node.next;
-//             if self.front.is_none() {
-//                 self.rear = None;
-//             }
-//             (priority, value)
-//         })
-//     }
-// }
+    pub fn dequeue(&mut self) -> T {
+        return self.list
+            .remove_at(self.list.length)
+            .expect("Value expected when popping")
+            .value;
+    }
+}

@@ -4,8 +4,8 @@
 - https://wiki.osdev.org/Exceptions
 - https://wiki.osdev.org/Programmable_Interval_Timer
 - Must consider way to handle handle cr3 register (deep clone to start with)
+- Replace the free stack within the pfa
+- When popping must kfree the address
 
-Need to write a simple list, and then queue
-Need to write a kmalloc
 Need to do multitasking
 

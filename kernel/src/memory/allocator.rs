@@ -5,7 +5,7 @@
 
 use super::page_frame_allocator;
 use super::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
-use crate::ds::stack::{List, ListNode};
+use crate::ds::list::{List, ListNode};
 use crate::utils::spinlock::Lock;
 
 // Divide by 8 as usize is 8 bytes and a *mut usize points to 8 bytes
@@ -94,7 +94,7 @@ pub fn kfree(dp: *mut usize) {
     // Add block to list of free blocks (will be at the end)
     FREE_MEMORY_BLOCK_LIST
         .lock()
-        .push(header.payload.clone(), header_address as usize);
+        .push_back(header.payload.clone(), header_address as usize);
     FREE_MEMORY_BLOCK_LIST.free();
 
     // Check next node to merge memory regions together to alleviate fragmentation
@@ -160,7 +160,7 @@ fn create_new_memory_block(size: usize, address: *mut usize, is_free: bool) -> *
         // Push to linked list
         FREE_MEMORY_BLOCK_LIST
             .lock()
-            .push(new_memory_block, dp_addr as usize);
+            .push_back(new_memory_block, dp_addr as usize);
         FREE_MEMORY_BLOCK_LIST.free();
     } else {
         // Add meta data regardless
