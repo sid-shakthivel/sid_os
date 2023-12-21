@@ -6,9 +6,15 @@
     Communication link must exist between 2 processes like buffering, synchronisation,
 */
 
+use core::hash::Hash;
+
+use crate::memory::allocator::{kfree, kmalloc};
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 
-pub const MAX_PROCESS_NUM: usize = 4;
+mod elf;
+
+// The entrypoint for each user mode process
+pub static USER_PROCESS_START_ADDRESS: usize = 0x8000000;
 
 /*
     Processes are running programs with an individual address space, stack and data which run in userspace
@@ -31,11 +37,23 @@ pub enum ProcessPriority {
     Low,
 }
 
+impl ProcessPriority {
+    pub fn convert_to_value(process_priority: ProcessPriority) -> usize {
+        match process_priority {
+            Self::High => 10,
+            Self::Low => 5,
+        }
+    }
+}
+
 impl Process {
-    // The entrypoint for each process is 0x800000 which has already been mapped into memory
     pub fn init(priority: ProcessPriority, pid: usize) -> Process {
-        let mut rsp: *mut usize = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap();
-        PAGE_FRAME_ALLOCATOR.free();
+        /*
+           TODO: Need to map the address of the process data into virt addr
+        */
+
+        // Allocate a page of memory for the stack
+        let mut rsp: *mut usize = kmalloc(4096);
 
         unsafe {
             rsp = rsp.offset(4095);
@@ -45,12 +63,11 @@ impl Process {
                When interrupt is called the following registers are pushed as follows: SS -> RSP -> RFLAGS -> CS -> RIP
                These registers are then pushed: RAX -> RBX -> RBC -> RDX -> RSI -> RDI -> R8..R15
             */
-
             *rsp.offset(-1) = 0x20 | 0x3; // SS
             *rsp.offset(-2) = stack_top; // RSP
             *rsp.offset(-3) = 0x202; // RFLAGS which enable interrupts
             *rsp.offset(-4) = 0x18 | 0x3; // CS
-                                          // *rsp.offset(-5) = v_address; // RIP
+            *rsp.offset(-5) = USER_PROCESS_START_ADDRESS; // RIP
             *rsp.offset(-6) = 0x00; // RAX
             *rsp.offset(-7) = 0x00; // RBX
             *rsp.offset(-8) = 0x00; // RCX
@@ -67,7 +84,7 @@ impl Process {
             *rsp.offset(-19) = 0; // R14
             *rsp.offset(-20) = 0; // R15
                                   // *rsp.offset(-21) = new_p4 as u64; // CR3
-            rsp = rsp.offset(-21);
+            rsp = rsp.offset(-20);
         }
 
         Process {

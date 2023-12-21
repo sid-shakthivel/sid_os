@@ -16,12 +16,16 @@ use crate::interrupts::idt::IDT;
 use crate::interrupts::idt::IDTR;
 use crate::interrupts::idt::IDT_MAX_DESCRIPTIONS;
 use crate::print_serial;
+use crate::setup_exception_with_error_handler;
+use crate::setup_general_interrupt_handler;
 use crate::utils::ports::inb;
 use crate::CONSOLE;
-
 use core::arch::asm;
 
+use crate::interrupts::isr::setup_pit_handler;
+
 mod idt;
+mod isr;
 pub mod pic;
 pub mod pit;
 
@@ -86,129 +90,6 @@ struct ExceptionStackFrame {
     ss: u64,
 }
 
-// Purely for exceptions with an error code eg page faults
-macro_rules! setup_exception_with_error_handler {
-    ($exception_num: expr) => {{
-        #[naked]
-        extern "C" fn wrapper() -> ! {
-            unsafe {
-                asm!(
-                    "push rax",
-                    "push rbx",
-                    "push rcx",
-                    "push rdx",
-                    "push rbp",
-                    "push rdi",
-                    "push rsi",
-                    "mov rdx, [rsp + 7*8]", // Load error code
-                    "mov rdi, rsp", // Load ExceptionStackFrame
-                    "mov rsi, {0}", // Load exception id
-                    "add rdi, 7*8",
-                    "sub rsp, 8", // Allign stack pointer
-                    "call {1}",
-                    "add rsp, 8", // Reallign stack pointer
-                    "pop rsi",
-                    "pop rdi",
-                    "pop rbp",
-                    "pop rdx",
-                    "pop rcx",
-                    "pop rbx",
-                    "pop rax",
-                    "iretq",
-                    const $exception_num,
-                    sym exception_with_error_handler,
-                    options(noreturn)
-                );
-            }
-        }
-        wrapper
-    }};
-}
-
-// Includes exceptions and general interrupts
-macro_rules! setup_general_interrupt_handler {
-    ($func_name: ident, $interrupt_num: expr) => {{
-        #[naked]
-        extern "C" fn wrapper() -> ! {
-            unsafe {
-                asm!(
-                    "push rax",
-                    "push rbx",
-                    "push rcx",
-                    "push rdx",
-                    "push rbp",
-                    "push rdi",
-                    "push rsi",
-                    "mov rdi, rsp",
-                    "mov rsi, {0}",
-                    "add rdi, 7*8",
-                    "call {1}",
-                    "pop rsi",
-                    "pop rdi",
-                    "pop rbp",
-                    "pop rdx",
-                    "pop rcx",
-                    "pop rbx",
-                    "pop rax",
-                    "iretq",
-                    const $interrupt_num,
-                    sym $func_name,
-                    options(noreturn)
-                );
-            }
-        }
-        wrapper
-    }};
-}
-
-macro_rules! setup_pit_handler {
-    ($interrupt_num: expr) => {
-        #[naked]
-        extern "C" fn wrapper() -> ! {
-            unsafe {
-                asm!(
-                    "push rax",
-                    "push rbx",
-                    "push rcx",
-                    "push rdx",
-                    "push rbp",
-                    "push rdi",
-                    "push rsi",
-                    "push r8",
-                    "push r9",
-                    "push r10",
-                    "push r11",
-                    "push r12",
-                    "push r13",
-                    "push r14",
-                    "push r15",
-                    "mov rdi, rsp", // Load ExceptionStackFrame
-                    "call {0}",
-                    "pop r15",
-                    "pop r14",
-                    "pop r13",
-                    "pop r12",
-                    "pop r11",
-                    "pop r10",
-                    "pop r9",
-                    "pop r8",
-                    "pop rsi",
-                    "pop rdi",
-                    "pop rbp",
-                    "pop rdx",
-                    "pop rcx",
-                    "pop rbx",
-                    "pop rax",
-                    "iretq",
-                    sym exception_with_error_handler,
-                    options(noreturn)
-                );
-            }
-        }
-        wrapper
-    };
-}
-
 #[derive(Clone, Copy, Debug)]
 enum PageFaultFlags {
     IsPresent, // Caused by non present page
@@ -237,7 +118,7 @@ impl PageFaultFlags {
     }
 }
 
-extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id: usize) {
+pub extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id: usize) {
     match exception_id {
         0..32 => {
             print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
@@ -248,7 +129,7 @@ extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id:
     print_serial!("{:?}\n", stack_frame);
 }
 
-extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame) {
+pub extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame) {
     // Handle keyboard
     let scancode = inb(0x60);
 
@@ -262,7 +143,7 @@ extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame) {
     PICS.free();
 }
 
-extern "C" fn exception_with_error_handler(
+pub extern "C" fn exception_with_error_handler(
     stack_frame: &ExceptionStackFrame,
     exception_id: usize,
     error_code: usize,
@@ -284,6 +165,11 @@ extern "C" fn exception_with_error_handler(
     print_serial!("{:?}\n", stack_frame);
 
     loop {}
+}
+
+pub extern "C" fn pit_handler(old_task_rsp: usize) {
+    // Retrieve the current task's rsp
+    // Return the new_task rsp
 }
 
 fn translate(scancode: u8, uppercase: bool) -> char {

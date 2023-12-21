@@ -3,6 +3,7 @@ Physical memory is split into 4096 byte chunks called page frames
 To manage the frames, a stack of free pages along with a pointer to first page are used
 */
 
+use crate::ds::stack;
 use crate::{print_serial, utils::spinlock::Lock, CONSOLE};
 
 const PAGE_SIZE: usize = 4096;

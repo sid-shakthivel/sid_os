@@ -1,8 +1,7 @@
 KERNEL = $(shell pwd)/kernel
-USERLAND_MODULE_1 = $(shell pwd)/userland/terminal
-USERLAND_MODULE_2 = $(shell pwd)/userland/hello-1.3
-USERLAND_MODULE_3 = $(shell pwd)/userland/doomgeneric
-SYSCALLS = $(shell pwd)/userland/syscalls
+USERLAND_MODULE_1 = $(shell pwd)/userland/static
+PROJECT_PATH = $(shell pwd)
+# SYSCALLS = $(shell pwd)/userland/syscalls
 
 run-qemu: all
 	qemu-system-x86_64 -accel hvf -serial stdio -cdrom sid_os.iso
@@ -15,17 +14,12 @@ all:
 	# rm -f isodir/modules/fs.img
 	# cp res/fs.img isodir/modules
 
-	# # Compile syscalls
+	# Compile syscalls
 	# cd $(SYSCALLS) && make
 
-	# # Userspace modules
+	# Userspace modules
 	# cd $(USERLAND_MODULE_1) && make
-
-	# # cd $(USERLAND_MODULE_2) && make all
-
-	# cd $(USERLAND_MODULE_3) && make all &&\
-	# rm -f ../../isodir/modules/doomgeneric &&\
-	# cp doomgeneric ../../isodir/modules
+	docker run --rm -v $(PROJECT_PATH):/code sid_os/toolchain bash -c "cd code/userland/static && make all"
 
 	# Kernel
 	cd $(KERNEL) && make run

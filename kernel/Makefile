@@ -13,6 +13,8 @@ ASSEMBLY_SOURCES := $(wildcard src/asm/*.asm) $(wildcard *.asm)
 ASSEMBLY_OBJECTS := $(patsubst %.asm, $(OBJ)/%.o, $(ASSEMBLY_SOURCES))
 FONT := font.o
 
+PROJECT_PATH = $(shell pwd)
+
 all: sid_os.iso
 
 sid_os.iso: kernel.bin
@@ -30,6 +32,6 @@ clean:
 	$(R_COMPILER) clean
 
 run:
-	RUST_TARGET_PATH=/Users/siddharth/Code/rust/sid_os/kernel $(R_COMPILER) build --target $(TARGET)
+	RUST_TARGET_PATH=$(PROJECT_PATH) $(R_COMPILER) build --target $(TARGET)
 	rm -f kernel.bin
-	docker run --rm -v /Users/siddharth/Code/rust/sid_os/:/code sid_os/toolchain bash -c "cd code/kernel && make"
+	docker run --rm -v $(PROJECT_PATH):/code sid_os/toolchain bash -c "cd code && make"

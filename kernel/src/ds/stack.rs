@@ -21,4 +21,15 @@ impl<T: Clone> Stack<T> {
         let addr = kmalloc(core::mem::size_of::<T>()) as usize;
         self.list.push_front(payload, addr);
     }
+
+    /*
+        Purely for page frame allocator 
+        kmalloc relies on pfa and thus can't be for it
+        Free stack is used
+     */
+    pub fn push_at_addr(&mut self, payload: T, addr: usize) {
+        self.list.push_front(payload, addr);
+    }
 }
+
+

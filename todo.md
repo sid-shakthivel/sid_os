@@ -5,7 +5,10 @@
 - https://wiki.osdev.org/Programmable_Interval_Timer
 - Must consider way to handle handle cr3 register (deep clone to start with)
 - Replace the free stack within the pfa
-- When popping must kfree the address
+- When popping should really kfree the address
 
-Need to do multitasking
+http://www.jamesmolloy.co.uk/tutorial_html/9.-Multitasking.html
+http://www.brokenthorn.com/Resources/OSDev25.html
+
+Need to do multitasking rn
 
