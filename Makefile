@@ -19,7 +19,7 @@ all:
 
 	# Userspace modules
 	# cd $(USERLAND_MODULE_1) && make
-	docker run --rm -v $(PROJECT_PATH):/code sid_os/toolchain bash -c "cd code/userland/static && make all"
+	# docker run --rm -v $(PROJECT_PATH):/code sid_os/toolchain bash -c "cd code/userland/static && make all"
 
 	# Kernel
 	cd $(KERNEL) && make run
