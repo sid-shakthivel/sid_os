@@ -5,7 +5,7 @@ use core::arch::asm;
 
 // Purely for exceptions with an error code eg page faults
 #[macro_export]
-macro_rules! setup_exception_with_error_handler {
+macro_rules! setup_exception_with_e_handler {
     ($exception_num: expr) => {{
         #[naked]
         extern "C" fn wrapper() -> ! {
@@ -45,7 +45,7 @@ macro_rules! setup_exception_with_error_handler {
 
 // Includes exceptions and general interrupts
 #[macro_export]
-macro_rules! setup_general_interrupt_handler {
+macro_rules! setup_interrupt_handler {
     ($func_name: ident, $interrupt_num: expr) => {{
         #[naked]
         extern "C" fn wrapper() -> ! {
@@ -80,8 +80,7 @@ macro_rules! setup_general_interrupt_handler {
     }};
 }
 
-// Must save data in rax
-
+// Must save data in rax eg mov rsp, rax
 #[naked]
 pub extern "C" fn setup_pit_handler() -> ! {
     unsafe {
@@ -103,6 +102,7 @@ pub extern "C" fn setup_pit_handler() -> ! {
             "push r15",
             "mov rdi, rsp",
             "call {0}",
+            "mov rsp, rax",
             "pop r15",
             "pop r14",
             "pop r13",

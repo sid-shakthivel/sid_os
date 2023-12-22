@@ -3,10 +3,12 @@
     Uses a free list allocator, which traverses a list of memory blocks until it finds a block which can fit the size
 */
 
-use super::page_frame_allocator;
 use super::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
+use super::{page_frame_allocator, paging};
 use crate::ds::list::{List, ListNode};
+use crate::print_serial;
 use crate::utils::spinlock::Lock;
+use crate::CONSOLE;
 
 // Divide by 8 as usize is 8 bytes and a *mut usize points to 8 bytes
 const NODE_MEMORY_BLOCK_SIZE: isize = (core::mem::size_of::<ListNode<MemoryBlock>>() / 8) as isize;
@@ -72,7 +74,7 @@ pub fn kmalloc(mut size: usize) -> *mut usize {
             // No memory blocks can be found, thus must allocate more memory according to how many bytes needed
             let pages_required = page_frame_allocator::get_page_number(
                 page_frame_allocator::round_to_nearest_page(size),
-            ) + 1;
+            );
 
             extend_memory_region(pages_required);
 
@@ -144,7 +146,7 @@ pub fn extend_memory_region(pages: usize) {
     let address = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frames(pages);
     PAGE_FRAME_ALLOCATOR.free();
 
-    let size = (4096) * pages;
+    let size = (paging::PAGE_SIZE) * pages;
     create_new_memory_block(size, address, true);
 }
 

@@ -98,6 +98,12 @@ impl MultibootBootInfo {
     }
 }
 
+impl MultibootMmapEntry {
+    pub fn end_address(&self) -> usize {
+        (self.addr + self.len) as usize
+    }
+}
+
 impl MultibootTagMmap {
     pub fn get_available_mmap_entries(&self) -> impl Iterator<Item = *const MultibootMmapEntry> {
         let address = self as *const MultibootTagMmap as usize;

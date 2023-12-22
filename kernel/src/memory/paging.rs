@@ -19,11 +19,13 @@ Page table entries have a certain 64 bit format which looks like this:
 +---------+-----------+------------------+---------------+---------------+-------+-----------+--------+-----------+------------------+-----------+------------+
 */
 
-use core::future::IntoFuture;
+use core::{future::IntoFuture, num};
 
 use crate::{print_serial, CONSOLE};
 
 use super::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
+
+pub const PAGE_SIZE: usize = 4096;
 
 pub const P4: *mut PageTable = 0xffffffff_fffff000 as *mut _;
 
@@ -160,19 +162,25 @@ impl PageTable {
     fn map(&mut self, v_addr: usize, p_addr: usize) {
         self.map_recursive(v_addr, p_addr, 3); // Level starts at 3 as 0..3
     }
+
+    fn map_pages(&mut self, number_of_pages: usize, v_addr: usize, p_addr: usize) {
+        for i in 0..number_of_pages {
+            let p_address = p_addr + (i * PAGE_SIZE);
+            let v_address = v_addr + (i * PAGE_SIZE);
+            self.map_recursive(v_addr, p_addr, 3);
+        }
+    }
+}
+
+pub fn map_pages(number_of_pages: usize, v_addr: usize, p_addr: usize) {
+    unsafe {
+        (*P4).map_pages(number_of_pages, v_addr, p_addr);
+        flush_tlb();
+    }
 }
 
 pub fn map_page(p_addr: usize, v_addr: usize, is_user: bool) {
-    unsafe {
-        (*P4).map(v_addr, p_addr);
-
-        /*
-            Translation Lookaside Buffer
-            Cashes the translation of virtual to physical addresses
-            Updated manually
-        */
-        flush_tlb();
-    }
+    map_pages(1, v_addr, p_addr);
 }
 
 extern "C" {

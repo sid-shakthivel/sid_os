@@ -15,9 +15,11 @@ use crate::interrupts::idt::PrivilegeLevel;
 use crate::interrupts::idt::IDT;
 use crate::interrupts::idt::IDTR;
 use crate::interrupts::idt::IDT_MAX_DESCRIPTIONS;
+use crate::multitask::ProcessManager;
+use crate::multitask::PROCESS_MANAGER;
 use crate::print_serial;
-use crate::setup_exception_with_error_handler;
-use crate::setup_general_interrupt_handler;
+use crate::setup_exception_with_e_handler;
+use crate::setup_interrupt_handler;
 use crate::utils::ports::inb;
 use crate::CONSOLE;
 use core::arch::asm;
@@ -167,9 +169,13 @@ pub extern "C" fn exception_with_error_handler(
     loop {}
 }
 
-pub extern "C" fn pit_handler(old_task_rsp: usize) {
-    // Retrieve the current task's rsp
-    // Return the new_task rsp
+pub extern "C" fn pit_handler(old_task_rsp: usize) -> usize {
+    print_serial!("In Pit Handler\n");
+    PICS.lock().acknowledge(0x20 as u8);
+    PICS.free();
+    let rsp = PROCESS_MANAGER.lock().switch_process(old_task_rsp);
+    PROCESS_MANAGER.free();
+    rsp
 }
 
 fn translate(scancode: u8, uppercase: bool) -> char {
@@ -187,46 +193,34 @@ fn translate(scancode: u8, uppercase: bool) -> char {
 pub fn init() {
     unsafe {
         // Setup exceptions
-        IDT[0] = IDTEntry::new(
-            GateType::Trap,
-            PrivilegeLevel::Ring3,
-            setup_general_interrupt_handler!(exception_handler, 0),
-        );
-
-        IDT[1] = IDTEntry::new(
-            GateType::Trap,
-            PrivilegeLevel::Ring3,
-            setup_general_interrupt_handler!(exception_handler, 1),
-        );
-
-        IDT[3] = IDTEntry::new(
-            GateType::Trap,
-            PrivilegeLevel::Ring3,
-            setup_general_interrupt_handler!(exception_handler, 3),
-        );
-
-        IDT[6] = IDTEntry::new(
-            GateType::Trap,
-            PrivilegeLevel::Ring3,
-            setup_general_interrupt_handler!(exception_handler, 6),
-        );
-
-        // Setup exceptions with an error code
-
-        IDT[14] = IDTEntry::new(
-            GateType::Trap,
-            PrivilegeLevel::Ring3,
-            setup_exception_with_error_handler!(14),
-        );
+        IDT[0] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 0));
+        IDT[1] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 1));
+        IDT[2] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 2));
+        IDT[3] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 3));
+        IDT[4] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 4));
+        IDT[5] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 5));
+        IDT[6] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 6));
+        IDT[7] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 7));
+        IDT[8] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(8));
+        IDT[9] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 9));
+        IDT[10] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(10));
+        IDT[11] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(11));
+        IDT[12] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(12));
+        IDT[13] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(13));
+        IDT[14] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(14));
+        IDT[16] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 16));
+        IDT[17] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(17));
+        IDT[18] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 18));
+        IDT[19] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 19));
+        IDT[20] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 20));
+        IDT[21] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(21));
+        IDT[28] = IDTEntry::new_default_trap(setup_interrupt_handler!(exception_handler, 28));
+        IDT[29] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(29));
+        IDT[30] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(30));
 
         // Interrupts
-
-        // Keyboard
-        IDT[0x21] = IDTEntry::new(
-            GateType::Interrupt,
-            PrivilegeLevel::Ring3,
-            setup_general_interrupt_handler!(interrupt_handler, 0x21),
-        );
+        IDT[0x20] = IDTEntry::new_default_interrupt(setup_pit_handler); // Timer (PIT)
+        IDT[0x21] = IDTEntry::new_default_interrupt(setup_interrupt_handler!(interrupt_handler, 0x21)); // Keyboard
 
         // Syscalls
 

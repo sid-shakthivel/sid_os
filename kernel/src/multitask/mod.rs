@@ -7,9 +7,15 @@
 */
 
 use core::hash::Hash;
+use core::usize;
 
+use crate::ds::queue::PriorityQueue;
 use crate::memory::allocator::{kfree, kmalloc};
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
+use crate::memory::paging;
+use crate::print_serial;
+use crate::utils::spinlock::Lock;
+use crate::CONSOLE;
 
 mod elf;
 
@@ -30,6 +36,40 @@ pub struct Process {
     // pub cr3: *mut Table,
 }
 
+pub struct ProcessManager {
+    pub tasks: PriorityQueue<Process>,
+    pub current_process_id: usize,
+}
+
+impl ProcessManager {
+    pub const fn new() -> ProcessManager {
+        ProcessManager {
+            tasks: PriorityQueue::<Process>::new(),
+            current_process_id: 0,
+        }
+    }
+
+    pub fn add_process(
+        &mut self,
+        priority: ProcessPriority,
+        pid: usize,
+        multiboot_data: (usize, usize),
+    ) {
+        let converted_priority = ProcessPriority::convert_to_value(priority);
+        let process = Process::init(priority, pid, multiboot_data);
+
+        self.tasks.enqueu_at_page(process, converted_priority);
+    }
+
+    pub fn switch_process(&mut self, old_rsp: usize) -> usize {
+        // Must save
+        let current_process = self.tasks.get_head();
+        // current_process.rsp = old_rsp as *const usize;
+        let new_rsp = current_process.rsp;
+        return new_rsp as usize;
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[allow(dead_code)]
 pub enum ProcessPriority {
@@ -46,14 +86,15 @@ impl ProcessPriority {
     }
 }
 
+// multiboot data defines the address of the process followed by its size
 impl Process {
-    pub fn init(priority: ProcessPriority, pid: usize) -> Process {
-        /*
-           TODO: Need to map the address of the process data into virt addr
-        */
-
+    pub fn init(priority: ProcessPriority, pid: usize, multiboot_data: (usize, usize)) -> Process {
         // Allocate a page of memory for the stack
-        let mut rsp: *mut usize = kmalloc(4096);
+        // let mut rsp: *mut usize = kmalloc(paging::PAGE_SIZE);
+        let mut rsp: *mut usize = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap();
+        PAGE_FRAME_ALLOCATOR.free();
+
+        elf::parse(multiboot_data.0);
 
         unsafe {
             rsp = rsp.offset(4095);
@@ -95,3 +136,5 @@ impl Process {
         }
     }
 }
+
+pub static PROCESS_MANAGER: Lock<ProcessManager> = Lock::new(ProcessManager::new());

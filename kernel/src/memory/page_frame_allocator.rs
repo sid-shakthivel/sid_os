@@ -6,7 +6,7 @@ To manage the frames, a stack of free pages along with a pointer to first page a
 use crate::ds::stack;
 use crate::{print_serial, utils::spinlock::Lock, CONSOLE};
 
-const PAGE_SIZE: usize = 4096;
+use super::paging;
 
 #[derive(Debug)]
 pub struct PageFrame {
@@ -48,11 +48,11 @@ impl PageFrameAllocator {
         memory_start = round_to_nearest_page(memory_start) + 0x1000;
         memory_end = round_to_nearest_page(memory_end);
 
-        self.memory_start = memory_start + (PAGE_SIZE * 2);
+        self.memory_start = memory_start + (paging::PAGE_SIZE * 2);
         self.memory_end = memory_end;
         self.free_page_frames =
-            unsafe { Some(&mut *((memory_start + PAGE_SIZE) as *mut FreeStack)) };
-        self.current_page = memory_start + (PAGE_SIZE * 2);
+            unsafe { Some(&mut *((memory_start + paging::PAGE_SIZE) as *mut FreeStack)) };
+        self.current_page = memory_start + (paging::PAGE_SIZE * 2);
     }
 
     /*
@@ -72,7 +72,7 @@ impl PageFrameAllocator {
             if address > self.memory_end {
                 return None;
             } else {
-                self.current_page += 4096;
+                self.current_page += paging::PAGE_SIZE;
                 return Some(self.current_page as *mut usize);
             }
         } else {
@@ -105,7 +105,7 @@ impl PageFrameAllocator {
     pub fn alloc_page_frames(&mut self, pages_required: usize) -> *mut usize {
         let address = self.current_page;
         for _i in 0..pages_required {
-            self.current_page += 4096;
+            self.current_page += paging::PAGE_SIZE;
         }
         return address as *mut usize;
     }
@@ -160,7 +160,7 @@ pub fn round_to_nearest_page(size: usize) -> usize {
 }
 
 pub fn get_page_number(size: usize) -> usize {
-    size / (PAGE_SIZE as usize)
+    size / (paging::PAGE_SIZE as usize)
 }
 
 pub static PAGE_FRAME_ALLOCATOR: Lock<PageFrameAllocator> = Lock::new(PageFrameAllocator::new());

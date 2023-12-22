@@ -19,9 +19,11 @@
 #![allow(unused_variables)]
 
 use crate::memory::allocator::kmalloc;
-use crate::memory::page_frame_allocator;
-use crate::{CONSOLE, print_serial};
-use core::mem;
+use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
+use crate::memory::{page_frame_allocator, paging};
+use crate::{print_serial, CONSOLE};
+use core::future::pending;
+use core::{mem, num};
 
 type Elf64Half = u16;
 type Elf64Off = usize;
@@ -75,21 +77,6 @@ enum ElfType {
 }
 
 #[repr(C, packed)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct ElfSectionHeader {
-    sh_name: Elf64Word, // Section name, index in string table (index is defined in e_shstrndx)
-    sh_type: Elf64Word, // Type
-    sh_flags: Elf64Xword, // Miscellaneous section atttributes
-    sh_addr: Elf64Addr, // Sectoin virtual address
-    sh_offset: Elf64Off, // Section file offset
-    sh_size: Elf64Xword, // Size of section (in bytes)
-    sh_link: Elf64Word, // Index of another section
-    sh_info: Elf64Word, // Additional section info
-    sh_addralgin: Elf64Xword, // Section alignment
-    sh_entsize: Elf64Xword, // Entry size if section holds table
-}
-
-#[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 struct ElfProgramHeader {
     p_type: Elf64Word,    // Entry type
@@ -112,7 +99,7 @@ enum ProgramHeaderType {
 pub fn parse(file_start: usize) {
     let elf_header = unsafe { &*(file_start as *const ElfHeader) };
     validate_file(elf_header);
-    // parse_program_headers(file_start, elf_header);
+    parse_program_headers(file_start, elf_header);
 }
 
 // Verify file starts with ELF Magic number and is built for the correct system
@@ -157,11 +144,10 @@ fn validate_file(elf_header: &ElfHeader) -> bool {
         "Unsupported ELF file target\n"
     );
 
-    let test = elf_header.e_type;
-
-    print_serial!("The header type is {}", test);
-
-    // assert!(test == 1, "Unsupported ELF file type {}", test);
+    assert!(
+        elf_header.e_type == (ElfType::EtExec as u16),
+        "Unsupported ELF file type"
+    );
 
     return true;
 }
@@ -173,6 +159,11 @@ fn validate_file(elf_header: &ElfHeader) -> bool {
 */
 fn parse_program_headers(file_start: usize, elf_header: &ElfHeader) {
     // Loop through the headers and load each loadable segment into memory
+
+    // let unaligned_num_header = core::ptr::addr_of!(elf_header.e_phnum);
+    // let aligned_num_header = unsafe { core::ptr::read_unaligned(unaligned_num_header) };
+    // print_serial!("number of elf headers: {}\n", aligned_num_header);
+
     for i in 0..elf_header.e_phnum {
         let address =
             file_start + elf_header.e_phoff + (mem::size_of::<ElfProgramHeader>()) * (i as usize);
@@ -181,6 +172,7 @@ fn parse_program_headers(file_start: usize, elf_header: &ElfHeader) {
         match program_header.p_type {
             1 => {
                 // LOAD
+                // TODO: With multiple program headers may need to mulitply by i
                 let source = file_start + program_header.p_offset as usize;
                 load_segment_into_memory(
                     source,
@@ -204,7 +196,10 @@ fn load_segment_into_memory(
     let rounded_size = page_frame_allocator::round_to_nearest_page(memsz);
     let number_of_pages = page_frame_allocator::get_page_number(rounded_size);
 
-    let dest = kmalloc(number_of_pages * 4096);
+    let dest: *mut usize = PAGE_FRAME_ALLOCATOR
+        .lock()
+        .alloc_page_frames(number_of_pages);
+    PAGE_FRAME_ALLOCATOR.free();
     let source = source_raw as *mut usize;
 
     unsafe {
@@ -214,6 +209,7 @@ fn load_segment_into_memory(
 
     // Map the physical pages to the virtual address provided
     // paging::map_pages(number_of_pages, dest as usize, v_address);
+    paging::map_pages(number_of_pages, v_address, dest as usize);
 
     v_address + (rounded_size)
 }

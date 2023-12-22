@@ -34,6 +34,14 @@ impl IDTEntry {
         };
     }
 
+    pub fn new_default_trap(func_addr_raw: InterruptHandlerFunc) -> IDTEntry {
+        IDTEntry::new(GateType::Trap, PrivilegeLevel::Ring3, func_addr_raw)
+    }
+
+    pub fn new_default_interrupt(func_addr_raw: InterruptHandlerFunc) -> IDTEntry {
+        IDTEntry::new(GateType::Interrupt, PrivilegeLevel::Ring3, func_addr_raw)
+    }
+
     fn generate_flags(data: (GateType, PrivilegeLevel)) -> u8 {
         let mut attributes: u8 = match data.0 {
             GateType::Trap => 0x8F,
