@@ -37,6 +37,7 @@ bits 32
 start:
     mov esp, stack_top ; Stack grows downwards
     mov edi, ebx; Multiboot information structure
+    mov esi, eax; Multiboot magic value
 
     call setup_paging
 
