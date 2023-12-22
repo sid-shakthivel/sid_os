@@ -25,8 +25,7 @@ impl Pit {
 
     pub fn init(&self) {
         // Set command byte (0x36)
-        let mode = 0b00000000 | 0b00110000 | 0b00000000;
-        outb(0x43, mode);
+        outb(0x43, 0x36);
         self.set_frequency();
     }
 

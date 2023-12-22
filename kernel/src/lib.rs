@@ -9,11 +9,14 @@
 #![feature(ptr_metadata)]
 
 mod ds;
+mod gdt_test;
 mod interrupts;
 mod memory;
 mod multitask;
 mod output;
 mod utils;
+
+extern crate x86_64;
 
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::multitask::PROCESS_MANAGER;
@@ -36,6 +39,8 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
 
     CONSOLE.lock().init();
     CONSOLE.free();
+
+    gdt_test::init();
 
     let multiboot_info = multiboot2::load(multiboot_info_addr, magic);
 

@@ -8,6 +8,7 @@ An interrupt descriptor table defines what each interrupt will do (First 32 Exce
 
 use self::pic::PicFunctions;
 use self::pic::PICS;
+use crate::gdt_test::TSS;
 #[warn(unused_assignments)]
 use crate::interrupts::idt::GateType;
 use crate::interrupts::idt::IDTEntry;
@@ -23,6 +24,8 @@ use crate::setup_interrupt_handler;
 use crate::utils::ports::inb;
 use crate::CONSOLE;
 use core::arch::asm;
+
+use x86_64::addr::VirtAddr;
 
 use crate::interrupts::isr::setup_pit_handler;
 
@@ -164,12 +167,24 @@ pub extern "C" fn exception_with_error_handler(
         _ => {}
     }
 
+    print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
     print_serial!("{:?}\n", stack_frame);
 
     loop {}
 }
 
 pub extern "C" fn pit_handler(old_task_rsp: usize) -> usize {
+    // Update TSS to have a clean stack when coming from user to kernel
+
+    let kernel_addr = PROCESS_MANAGER.lock().kernel_address;
+    PROCESS_MANAGER.free();
+
+    if (kernel_addr > 0) {
+        unsafe {
+            TSS.privilege_stack_table[0] = VirtAddr::new(kernel_addr as u64);
+        }
+    }
+
     print_serial!("In Pit Handler\n");
     PICS.lock().acknowledge(0x20 as u8);
     PICS.free();
@@ -218,9 +233,10 @@ pub fn init() {
         IDT[29] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(29));
         IDT[30] = IDTEntry::new_default_trap(setup_exception_with_e_handler!(30));
 
-        // Interrupts
+        // General interrupts
         IDT[0x20] = IDTEntry::new_default_interrupt(setup_pit_handler); // Timer (PIT)
-        IDT[0x21] = IDTEntry::new_default_interrupt(setup_interrupt_handler!(interrupt_handler, 0x21)); // Keyboard
+        IDT[0x21] =
+            IDTEntry::new_default_interrupt(setup_interrupt_handler!(interrupt_handler, 0x21)); // Keyboard
 
         // Syscalls
 

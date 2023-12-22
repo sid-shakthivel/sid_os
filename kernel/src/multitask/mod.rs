@@ -39,6 +39,8 @@ pub struct Process {
 pub struct ProcessManager {
     pub tasks: PriorityQueue<Process>,
     pub current_process_id: usize,
+    pub is_from_kernel: bool,
+    pub kernel_address: usize,
 }
 
 impl ProcessManager {
@@ -46,6 +48,8 @@ impl ProcessManager {
         ProcessManager {
             tasks: PriorityQueue::<Process>::new(),
             current_process_id: 0,
+            is_from_kernel: true,
+            kernel_address: 0,
         }
     }
 
@@ -64,7 +68,14 @@ impl ProcessManager {
     pub fn switch_process(&mut self, old_rsp: usize) -> usize {
         // Must save
         let current_process = self.tasks.get_head();
-        // current_process.rsp = old_rsp as *const usize;
+
+        if (self.is_from_kernel) {
+            self.is_from_kernel = false;
+            self.kernel_address = old_rsp;
+        } else {
+            current_process.rsp = (old_rsp) as *const usize;
+        }
+
         let new_rsp = current_process.rsp;
         return new_rsp as usize;
     }
