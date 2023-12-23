@@ -65,6 +65,8 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
         PROCESS_MANAGER.free();
     }
 
+    print_serial!("Dooes it break?\n");
+
     interrupts::pit::PIT.lock().init();
     interrupts::pit::PIT.free();
 
@@ -73,7 +75,7 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
 
     interrupts::init();
 
-    interrupts::enable();
+    // interrupts::enable();
 
     loop {}
 }

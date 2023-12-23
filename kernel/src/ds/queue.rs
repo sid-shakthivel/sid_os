@@ -36,13 +36,13 @@ impl<T: Clone> PriorityQueue<T> {
         self.list.push_back(priority_wrapped_node, addr);
     }
 
-    pub fn enqueu_at_page(&mut self, payload: T, priority: usize) {
-        let priority_wrapped_node = PriorityWrapper::new(payload, priority);
-        let addr = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap() as usize;
-        PAGE_FRAME_ALLOCATOR.free();
+    // pub fn enqueu_at_page(&mut self, payload: T, priority: usize) {
+    //     let priority_wrapped_node = PriorityWrapper::new(payload, priority);
+    //     let addr = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap() as usize;
+    //     PAGE_FRAME_ALLOCATOR.free();
 
-        self.list.push_back(priority_wrapped_node, addr);
-    }
+    //     self.list.push_back(priority_wrapped_node, addr);
+    // }
 
     pub fn dequeue(&mut self) -> T {
         return self

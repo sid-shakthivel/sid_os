@@ -62,7 +62,7 @@ impl ProcessManager {
         let converted_priority = ProcessPriority::convert_to_value(priority);
         let process = Process::init(priority, pid, multiboot_data);
 
-        self.tasks.enqueu_at_page(process, converted_priority);
+        self.tasks.enqueue(process, converted_priority);
     }
 
     pub fn switch_process(&mut self, old_rsp: usize) -> usize {
@@ -101,9 +101,7 @@ impl ProcessPriority {
 impl Process {
     pub fn init(priority: ProcessPriority, pid: usize, multiboot_data: (usize, usize)) -> Process {
         // Allocate a page of memory for the stack
-        // let mut rsp: *mut usize = kmalloc(paging::PAGE_SIZE);
-        let mut rsp: *mut usize = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap();
-        PAGE_FRAME_ALLOCATOR.free();
+        let mut rsp: *mut usize = kmalloc(paging::PAGE_SIZE);
 
         elf::parse(multiboot_data.0);
 

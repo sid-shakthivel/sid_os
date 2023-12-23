@@ -1,3 +1,6 @@
+use crate::print_serial;
+use crate::CONSOLE;
+
 // Each node stores a reference to the next/previous node within the list along with a payload
 #[derive(Debug, Copy, Clone)]
 pub struct ListNode<T: 'static> {
@@ -52,6 +55,8 @@ impl<T: Clone> List<T> {
         new_node.next = Some(head);
         head.prev = Some(new_node);
         self.head = Some(new_node);
+
+        self.length += 1;
     }
 
     // Create a new node at the end of the list
@@ -75,6 +80,8 @@ impl<T: Clone> List<T> {
                 self.tail = Some(new_node);
             }
         }
+
+        self.length += 1;
     }
 
     pub fn remove_at(&mut self, index: usize) -> Option<T> {
@@ -88,11 +95,16 @@ impl<T: Clone> List<T> {
             0 => unsafe {
                 if (self.head.is_some()) {
                     let head = ListNode::get_mut_ref(self.head);
-                    let head_next = ListNode::get_mut_ref(head.next);
+
+                    if (head.next.is_some()) {
+                        let head_next = ListNode::get_mut_ref(head.next);
+                        head_next.prev = None;
+                    }
 
                     self.head = head.next;
                     let payload = head.payload.clone();
-                    head_next.prev = None;
+
+                    self.length -= 1;
 
                     return Some(payload);
                 }
@@ -108,13 +120,18 @@ impl<T: Clone> List<T> {
                     tail_prev.next = None;
                     tail.prev = None;
 
+                    self.length -= 1;
+
                     return Some(payload);
                 }
             },
             _ => {
                 // Implement for any other index (through looping)
+                panic!("Must implement this!!\n");
             }
         };
+
+        self.length -= 1;
 
         return None;
     }

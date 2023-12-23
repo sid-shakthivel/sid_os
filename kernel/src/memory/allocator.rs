@@ -50,7 +50,7 @@ pub fn kmalloc(mut size: usize) -> *mut usize {
             // If block is larger then memory required, split region and add parts to list
             if memory_block.size > size {
                 // Remove old memory block
-                FREE_MEMORY_BLOCK_LIST.lock().remove_at(index as usize);
+                FREE_MEMORY_BLOCK_LIST.lock().remove_at(index);
                 FREE_MEMORY_BLOCK_LIST.free();
 
                 // Create new memory block for malloc'd memory
@@ -65,6 +65,8 @@ pub fn kmalloc(mut size: usize) -> *mut usize {
                 address = unsafe { address.offset(NODE_MEMORY_BLOCK_SIZE + size_in_u64 as isize) };
                 create_new_memory_block(memory_block.size - size, address, true);
 
+                // print_memory_list();
+
                 return dp;
             } else {
                 return memory_block.data;
@@ -77,6 +79,10 @@ pub fn kmalloc(mut size: usize) -> *mut usize {
             );
 
             extend_memory_region(pages_required);
+
+            print_serial!("Extended memory region\n");
+
+            print_memory_list();
 
             return kmalloc(size);
         }
@@ -138,6 +144,14 @@ fn find_first_fit(size: usize) -> (usize, Option<MemoryBlock>) {
     }
     FREE_MEMORY_BLOCK_LIST.free();
     return (0, None);
+}
+
+fn print_memory_list() {
+    for (i, memory_block) in FREE_MEMORY_BLOCK_LIST.lock().into_iter().enumerate() {
+        FREE_MEMORY_BLOCK_LIST.free();
+        print_serial!("{} {:?}\n", i, memory_block.unwrap());
+    }
+    FREE_MEMORY_BLOCK_LIST.free();
 }
 
 // Extends accessible memory region of kernel heap by another page (4096 bytes)

@@ -23,7 +23,7 @@ use core::{future::IntoFuture, num};
 
 use crate::{print_serial, CONSOLE};
 
-use super::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
+use super::{allocator::kmalloc, page_frame_allocator::PAGE_FRAME_ALLOCATOR};
 
 pub const PAGE_SIZE: usize = 4096;
 
@@ -102,11 +102,13 @@ impl PageTable {
 
             if self.entries[index].is_unused() {
                 // Create a new page table
-                let pf_addr = PAGE_FRAME_ALLOCATOR
-                    .lock()
-                    .alloc_page_frame()
-                    .expect("PFA Ran out of memory") as usize;
-                PAGE_FRAME_ALLOCATOR.free();
+                // let pf_addr = PAGE_FRAME_ALLOCATOR
+                //     .lock()
+                //     .alloc_page_frame()
+                //     .expect("PFA Ran out of memory") as usize;
+                // PAGE_FRAME_ALLOCATOR.free();
+
+                let pf_addr: usize = kmalloc(super::paging::PAGE_SIZE) as usize;
 
                 self.entries[index] = Page::new(pf_addr, &flags)
             }

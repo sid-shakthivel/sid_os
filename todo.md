@@ -5,10 +5,10 @@
 - When popping should really kfree the address
 - Zero the BSS (when we have it)
 - Really should make an iterator for the queue/stack to loop through
-- Fix the big kmalloc bug
-- Fix the iterator syntax
-- General grub things
 - Start the framebuffer
+- Proper PS2 keyboard
+- Proper PS2 mouse
+- Fix the kmalloc bug in which size is always increased whenever called
 
 http://www.jamesmolloy.co.uk/tutorial_html/9.-Multitasking.html
 http://www.brokenthorn.com/Resources/OSDev25.html
