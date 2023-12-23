@@ -7,6 +7,8 @@
 - Really should make an iterator for the queue/stack to loop through
 - Fix the big kmalloc bug
 - Fix the iterator syntax
+- General grub things
+- Start the framebuffer
 
 http://www.jamesmolloy.co.uk/tutorial_html/9.-Multitasking.html
 http://www.brokenthorn.com/Resources/OSDev25.html

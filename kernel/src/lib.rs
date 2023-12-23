@@ -44,7 +44,7 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     let mut end_memory: usize = 0;
     let mmap_tag = multiboot_info.get_memory_map_tag().expect("Expected mmap");
     for tag in mmap_tag.get_available_mmap_entries() {
-        end_memory = unsafe { (*tag).end_address() };
+        end_memory = tag.end_address()
     }
 
     PAGE_FRAME_ALLOCATOR
@@ -54,17 +54,15 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
 
     for tag in multiboot_info.get_module_tags() {
         // All modules are programs (so far)
-        unsafe {
-            let module_addr = (*tag).mod_start as usize;
-            let module_len = (*tag).mod_start as usize;
+        let module_addr = tag.mod_start as usize;
+        let module_len = (tag.mod_end - tag.mod_start) as usize;
 
-            PROCESS_MANAGER.lock().add_process(
-                multitask::ProcessPriority::High,
-                0,
-                (module_addr, module_len),
-            );
-            PROCESS_MANAGER.free();
-        }
+        PROCESS_MANAGER.lock().add_process(
+            multitask::ProcessPriority::High,
+            0,
+            (module_addr, module_len),
+        );
+        PROCESS_MANAGER.free();
     }
 
     interrupts::pit::PIT.lock().init();

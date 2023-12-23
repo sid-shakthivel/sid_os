@@ -176,8 +176,6 @@ impl Descriptor {
 
         let high = descriptor >> 32;
 
-        print_serial!("0x{:x} 0x:{:x}\n", descriptor, 0);
-
         assert!(high > 0, "The high is greater than 0");
 
         return Descriptor::SystemSegment(descriptor);
