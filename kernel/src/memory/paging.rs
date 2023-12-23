@@ -102,13 +102,13 @@ impl PageTable {
 
             if self.entries[index].is_unused() {
                 // Create a new page table
-                // let pf_addr = PAGE_FRAME_ALLOCATOR
-                //     .lock()
-                //     .alloc_page_frame()
-                //     .expect("PFA Ran out of memory") as usize;
-                // PAGE_FRAME_ALLOCATOR.free();
+                let pf_addr = PAGE_FRAME_ALLOCATOR
+                    .lock()
+                    .alloc_page_frame()
+                    .expect("PFA Ran out of memory") as usize;
+                PAGE_FRAME_ALLOCATOR.free();
 
-                let pf_addr: usize = kmalloc(super::paging::PAGE_SIZE) as usize;
+                // let pf_addr: usize = kmalloc(super::paging::PAGE_SIZE) as usize;
 
                 self.entries[index] = Page::new(pf_addr, &flags)
             }

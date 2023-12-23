@@ -36,6 +36,12 @@ impl MultibootBootInfo {
             .map(|tag| unsafe { &*(tag as *const Tag as *const MmapTag) })
     }
 
+    pub fn get_framebuffer_tag(&self) -> Option<&FramebufferTag> {
+        self.tags()
+            .find(|&tag| tag.typ == TagType::Framebuffer as u32)
+            .map(|tag| unsafe { &*(tag as *const Tag as *const FramebufferTag) })
+    }
+
     pub fn tags(&self) -> TagIter {
         TagIter::new(self.get_tag_address())
     }
@@ -204,6 +210,20 @@ impl<'a> Iterator for MmapIter<'a> {
             None
         }
     }
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct FramebufferTag {
+    typ: u32,
+    size: u32,
+    pub addr: u64,
+    pub pitch: u32,
+    pub width: u32,
+    pub height: u32,
+    pub bpp: u8,
+    pub fb_type: u8,
+    _reserved: u16,
 }
 
 pub fn load(multiboot_info_addr: usize, magic: usize) -> &'static MultibootBootInfo {

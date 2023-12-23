@@ -159,7 +159,7 @@ pub fn round_to_nearest_page(size: usize) -> usize {
     ((size as i64 + 4095) & (-4096)) as usize
 }
 
-pub fn get_page_number(size: usize) -> usize {
+pub fn get_number_of_pages(size: usize) -> usize {
     size / (paging::PAGE_SIZE as usize)
 }
 

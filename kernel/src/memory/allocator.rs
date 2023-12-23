@@ -74,15 +74,14 @@ pub fn kmalloc(mut size: usize) -> *mut usize {
         }
         None => {
             // No memory blocks can be found, thus must allocate more memory according to how many bytes needed
-            let pages_required = page_frame_allocator::get_page_number(
+            let pages_required = page_frame_allocator::get_number_of_pages(
                 page_frame_allocator::round_to_nearest_page(size),
             );
 
             extend_memory_region(pages_required);
 
-            print_serial!("Extended memory region\n");
-
-            print_memory_list();
+            // print_serial!("Extended memory region\n");
+            // print_memory_list();
 
             return kmalloc(size);
         }

@@ -194,7 +194,7 @@ fn load_segment_into_memory(
 ) -> usize {
     // Allocate appropriate amount of memory
     let rounded_size = page_frame_allocator::round_to_nearest_page(memsz);
-    let number_of_pages = page_frame_allocator::get_page_number(rounded_size);
+    let number_of_pages = page_frame_allocator::get_number_of_pages(rounded_size);
 
     let dest: *mut usize = PAGE_FRAME_ALLOCATOR
         .lock()

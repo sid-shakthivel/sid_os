@@ -9,6 +9,7 @@
 #![feature(ptr_metadata)]
 
 mod ds;
+mod gfx;
 mod interrupts;
 mod memory;
 mod multitask;
@@ -16,11 +17,12 @@ mod output;
 mod utils;
 
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
+use crate::memory::paging;
 use crate::multitask::PROCESS_MANAGER;
 use crate::output::output::Output;
 use crate::output::uart::CONSOLE;
 use crate::output::vga_text::Screen;
-use crate::utils::multiboot2;
+use crate::utils::{grub, multiboot2};
 
 use core::arch::asm;
 use core::mem;
@@ -52,20 +54,21 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
         .init(multiboot_info.end_address(), end_memory);
     PAGE_FRAME_ALLOCATOR.free();
 
-    for tag in multiboot_info.get_module_tags() {
-        // All modules are programs (so far)
-        let module_addr = tag.mod_start as usize;
-        let module_len = (tag.mod_end - tag.mod_start) as usize;
+    grub::bga_set_video_mode();
+    gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
 
-        PROCESS_MANAGER.lock().add_process(
-            multitask::ProcessPriority::High,
-            0,
-            (module_addr, module_len),
-        );
-        PROCESS_MANAGER.free();
-    }
+    // for tag in multiboot_info.get_module_tags() {
+    //     // All modules are programs (so far)
+    //     let module_addr = tag.mod_start as usize;
+    //     let module_len = (tag.mod_end - tag.mod_start) as usize;
 
-    print_serial!("Dooes it break?\n");
+    //     PROCESS_MANAGER.lock().add_process(
+    //         multitask::ProcessPriority::High,
+    //         0,
+    //         (module_addr, module_len),
+    //     );
+    //     PROCESS_MANAGER.free();
+    // }
 
     interrupts::pit::PIT.lock().init();
     interrupts::pit::PIT.free();
@@ -76,6 +79,8 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     interrupts::init();
 
     // interrupts::enable();
+
+    print_serial!("Finished Execution\n");
 
     loop {}
 }
