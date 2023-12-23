@@ -5,7 +5,7 @@ global long_mode_start
 section .text
 bits 64
 long_mode_start:
-  mov ax, 0x00
+  mov ax, 0x10
   mov ss, ax
   mov ds, ax
   mov es, ax
@@ -16,5 +16,3 @@ long_mode_start:
   call rust_main
 
   hlt
-
-

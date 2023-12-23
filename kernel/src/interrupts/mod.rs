@@ -8,7 +8,6 @@ An interrupt descriptor table defines what each interrupt will do (First 32 Exce
 
 use self::pic::PicFunctions;
 use self::pic::PICS;
-use crate::gdt_test::TSS;
 #[warn(unused_assignments)]
 use crate::interrupts::idt::GateType;
 use crate::interrupts::idt::IDTEntry;
@@ -16,6 +15,7 @@ use crate::interrupts::idt::PrivilegeLevel;
 use crate::interrupts::idt::IDT;
 use crate::interrupts::idt::IDTR;
 use crate::interrupts::idt::IDT_MAX_DESCRIPTIONS;
+use crate::memory::gdt::TSS;
 use crate::multitask::ProcessManager;
 use crate::multitask::PROCESS_MANAGER;
 use crate::print_serial;
@@ -24,8 +24,6 @@ use crate::setup_interrupt_handler;
 use crate::utils::ports::inb;
 use crate::CONSOLE;
 use core::arch::asm;
-
-use x86_64::addr::VirtAddr;
 
 use crate::interrupts::isr::setup_pit_handler;
 
@@ -181,11 +179,12 @@ pub extern "C" fn pit_handler(old_task_rsp: usize) -> usize {
 
     if (kernel_addr > 0) {
         unsafe {
-            TSS.privilege_stack_table[0] = VirtAddr::new(kernel_addr as u64);
+            TSS.privilege_stack_table[0] = kernel_addr;
         }
     }
 
     print_serial!("In Pit Handler\n");
+
     PICS.lock().acknowledge(0x20 as u8);
     PICS.free();
     let rsp = PROCESS_MANAGER.lock().switch_process(old_task_rsp);

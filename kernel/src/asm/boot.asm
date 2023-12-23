@@ -5,6 +5,7 @@
 extern long_mode_start
 global start
 
+; Setup inital GDT (without TSS)
 section .rodata
 gdt64:
     dq 0 ; null entry

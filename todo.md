@@ -7,7 +7,6 @@
 - Really should make an iterator for the queue/stack to loop through
 - Fix the big kmalloc bug
 - Fix the iterator syntax
--
 
 http://www.jamesmolloy.co.uk/tutorial_html/9.-Multitasking.html
 http://www.brokenthorn.com/Resources/OSDev25.html
