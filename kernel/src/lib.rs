@@ -8,6 +8,7 @@
 #![feature(const_mut_refs)]
 #![feature(ptr_metadata)]
 
+mod dev;
 mod ds;
 mod gfx;
 mod interrupts;
@@ -40,6 +41,7 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     CONSOLE.free();
 
     memory::gdt::init();
+    dev::ps2::init();
 
     let multiboot_info = multiboot2::load(multiboot_info_addr, magic);
 
