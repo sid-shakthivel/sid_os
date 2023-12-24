@@ -95,7 +95,7 @@ impl PageTable {
 
         if level == 0 {
             // Base case: Map the virtual address to the physical address in the P1 table
-            let p1_index = (v_addr >> 12) & 0x1FF;
+            let p1_index = (v_addr >> 12) & 0x1ff;
             self.entries[p1_index] = Page::new(p_addr, &flags);
         } else {
             let index = (v_addr >> (level * 9 + 12)) & 0x1FF;
@@ -167,9 +167,9 @@ impl PageTable {
 
     fn map_pages(&mut self, number_of_pages: usize, v_addr: usize, p_addr: usize) {
         for i in 0..number_of_pages {
-            let p_address = p_addr + (i * PAGE_SIZE);
-            let v_address = v_addr + (i * PAGE_SIZE);
-            self.map_recursive(v_addr, p_addr, 3);
+            let p_addr_mod = p_addr + (i * PAGE_SIZE);
+            let v_addr_mod = v_addr + (i * PAGE_SIZE);
+            self.map_recursive(v_addr_mod, p_addr_mod, 3);
         }
     }
 }

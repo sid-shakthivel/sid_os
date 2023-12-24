@@ -1,6 +1,9 @@
-mod framebuffer;
+mod rect;
+mod window;
+mod wm;
 
 use crate::memory::allocator::kmalloc;
+use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::memory::{page_frame_allocator, paging};
 use crate::multiboot2;
 use crate::{print_serial, CONSOLE};
@@ -18,12 +21,15 @@ pub fn init(fb_tag: &multiboot2::FramebufferTag) {
 
     assert!(size_in_mib == 3, "FB is not of expected size");
 
+    // let address = PAGE_FRAME_ALLOCATOR
+    //     .lock()
+    //     .alloc_page_frames(number_of_pages) as usize;
+    // PAGE_FRAME_ALLOCATOR.free();
     let address = kmalloc(size_in_bytes) as usize;
-
-    print_serial!("0x{:x}\n", address);
+    print_serial!("FB at: 0x{:x}\n", address);
 
     // Map the address to video memory
-    paging::map_pages(number_of_pages, fb_tag.addr as usize, address);
+    paging::map_pages(number_of_pages, address, fb_tag.addr as usize);
 
     for y in 0..fb_tag.height {
         for x in 0..fb_tag.width {

@@ -3,11 +3,11 @@ use crate::memory::allocator::{self, kmalloc};
 
 #[derive(Debug)]
 pub struct Stack<T: 'static> {
-    list: List<T>,
+    pub list: List<T>,
 }
 
 impl<T: Clone> Stack<T> {
-    pub fn new() -> Stack<T> {
+    pub const fn new() -> Stack<T> {
         Stack { list: List::new() }
     }
 
@@ -23,13 +23,11 @@ impl<T: Clone> Stack<T> {
     }
 
     /*
-        Purely for page frame allocator 
-        kmalloc relies on pfa and thus can't be for it
-        Free stack is used
-     */
+       Purely for page frame allocator
+       kmalloc relies on pfa and thus can't be for it
+       Free stack is used
+    */
     pub fn push_at_addr(&mut self, payload: T, addr: usize) {
         self.list.push_front(payload, addr);
     }
 }
-
-

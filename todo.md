@@ -16,3 +16,12 @@ http://www.brokenthorn.com/Resources/OSDev25.html
 https://is.muni.cz/el/fi/jaro2018/PB173/um/05_writing_a_very_small_os_kernel/osdev.pdf
 http://dmitrysoshnikov.com/compilers/writing-a-memory-allocator/
 https://web.archive.org/web/20170507030615/http://www.trackze.ro/wsbe-complicated-rectangles
+
+Plan for window manager:
+General VM:
+Need to loop through and paint
+List of windows 
+For window ordering literally just remove element and add to top of screen
+Figure out which window mouse accesses by looping through
+State machine? Dragging, Selecting
+Only trigger redraw when dragging or selecing
