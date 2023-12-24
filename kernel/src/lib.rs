@@ -41,7 +41,7 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     CONSOLE.free();
 
     memory::gdt::init();
-    dev::ps2::init();
+    dev::init();
 
     let multiboot_info = multiboot2::load(multiboot_info_addr, magic);
 
@@ -80,7 +80,7 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
 
     interrupts::init();
 
-    // interrupts::enable();
+    interrupts::enable();
 
     print_serial!("Finished Execution\n");
 

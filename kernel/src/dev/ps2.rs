@@ -1,13 +1,13 @@
 /*
     PS/2 (Personal System 2) controller is part of AIP which is linked to the 8042 chip
     Green/purple ports which connect directly to keyboards and mice
-    Scan codes are sets of codes which determine when a key is pressed/repeated/released
     Has 2 buffers for data (one for data recieved and one for data written before it's sent)
     - Data port (0x60) which is used to read/write from PS/2 device/controller
     - Command/Status register (0x64) used to send commands
     - Writing a value to 0x64 sends a command byte whilst reading gets the status byte
 */
 
+use super::keyboard::KEYBOARD;
 use crate::utils::ports::{inb, outb};
 use crate::{print_serial, CONSOLE};
 
@@ -147,7 +147,8 @@ pub fn init() -> Result<(), &'static str> {
     for i in 0..2 {
         match identify_device_type(i).unwrap() {
             PS2Device::MF2KeyboardTranslation => {
-                print_serial!("Setup keyboard\n")
+                KEYBOARD.lock().init();
+                KEYBOARD.free();
             }
             PS2Device::PS2Mouse => {
                 // MOUSE.lock().init();

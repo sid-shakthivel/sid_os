@@ -8,6 +8,7 @@ An interrupt descriptor table defines what each interrupt will do (First 32 Exce
 
 use self::pic::PicFunctions;
 use self::pic::PICS;
+use crate::dev::keyboard::KEYBOARD;
 #[warn(unused_assignments)]
 use crate::interrupts::idt::GateType;
 use crate::interrupts::idt::IDTEntry;
@@ -69,18 +70,6 @@ const EXCEPTION_MESSAGES: &'static [&'static str] = &[
     "FPU Error Interrupt",
 ];
 
-const STATIC_NUMBERS: [usize; 32] = [
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-    27, 28, 29, 30, 31, 32,
-];
-
-const LETTERS: &'static [char; 0x3A] = &[
-    '\0', '\0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\0', '\t', 'q', 'w',
-    'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n', '\0', 'a', 's', 'd', 'f', 'g', 'h',
-    'j', 'k', '\0', ';', '\'', '`', '\0', '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',
-    '\0', '*', '\0', ' ',
-];
-
 pub type InterruptHandlerFunc = extern "C" fn() -> !;
 
 #[derive(Debug)]
@@ -132,17 +121,16 @@ pub extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception
     print_serial!("{:?}\n", stack_frame);
 }
 
-pub extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame) {
-    // Handle keyboard
-    let scancode = inb(0x60);
-
-    let letter = translate(scancode, false);
-
-    if letter != '0' {
-        print_serial!("{}", letter);
+pub extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame, interrupt_id: usize) {
+    match interrupt_id {
+        0x21 => {
+            KEYBOARD.lock().handle_keyboard();
+            KEYBOARD.free();
+        }
+        _ => {}
     }
 
-    PICS.lock().acknowledge(0x21 as u8);
+    PICS.lock().acknowledge(interrupt_id as u8);
     PICS.free();
 }
 
@@ -190,18 +178,6 @@ pub extern "C" fn pit_handler(old_task_rsp: usize) -> usize {
     let rsp = PROCESS_MANAGER.lock().switch_process(old_task_rsp);
     PROCESS_MANAGER.free();
     rsp
-}
-
-fn translate(scancode: u8, uppercase: bool) -> char {
-    if scancode > 0x3A {
-        return '0';
-    }
-
-    if uppercase {
-        return ((LETTERS[scancode as usize] as u8) - 0x20) as char;
-    } else {
-        return LETTERS[scancode as usize];
-    }
 }
 
 pub fn init() {
