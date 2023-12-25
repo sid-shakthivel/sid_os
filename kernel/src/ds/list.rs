@@ -50,10 +50,12 @@ impl<T: Clone> List<T> {
         let new_node = unsafe { &mut *(addr as *mut ListNode<T>) };
         new_node.init(payload);
 
-        let head = ListNode::get_mut_ref(self.head);
+        if self.head.is_some() {
+            let head = ListNode::get_mut_ref(self.head);
+            new_node.next = Some(head);
+            head.prev = Some(new_node);
+        }
 
-        new_node.next = Some(head);
-        head.prev = Some(new_node);
         self.head = Some(new_node);
 
         self.length += 1;
@@ -130,8 +132,6 @@ impl<T: Clone> List<T> {
                 panic!("Must implement this!!\n");
             }
         };
-
-        self.length -= 1;
 
         return None;
     }

@@ -2,6 +2,8 @@ mod rect;
 mod window;
 mod wm;
 
+use crate::gfx::window::Window;
+use crate::gfx::wm::WindowManager;
 use crate::memory::allocator::kmalloc;
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::memory::{page_frame_allocator, paging};
@@ -39,4 +41,9 @@ pub fn init(fb_tag: &multiboot2::FramebufferTag) {
             }
         }
     }
+
+    let mut wm: WindowManager = WindowManager::new();
+    wm.set_fb_address(address);
+    wm.add_window(Window::new(50, 50, 300, 200));
+    wm.paint();
 }
