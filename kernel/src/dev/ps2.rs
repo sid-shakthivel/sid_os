@@ -8,6 +8,7 @@
 */
 
 use super::keyboard::KEYBOARD;
+use super::mouse::MOUSE;
 use crate::utils::ports::{inb, outb};
 use crate::{print_serial, CONSOLE};
 
@@ -26,6 +27,19 @@ enum ControllerRegisterFlags {
     MouseEnable = 0b00100000,
     KeyboardTranlation = 0b01000000,
     IsUnused = 0b10000000,
+}
+
+bitflags! {
+    struct ControllerRegister: u8 {
+        const KEYBOARD_INTERRUPT_ENABLE = 0b00000001;
+        const MOUSE_INTERRUPT_ENABLE = 0b00000010;
+        const SYSTEM_FLAG = 0b00000100;
+        const IGNORE_KEYBOARD_LOCK = 0b00001000;
+        const KEYBOARD_ENABLE = 0b00010000;
+        const MOUSE_ENABLE = 0b00100000;
+        const KEYBOARD_TRANSLATION = 0b01000000;
+        const UNUSED = 0b10000000;
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -120,10 +134,17 @@ pub fn init() -> Result<(), &'static str> {
         ControllerRegisterFlags::MouseInterruptEnable as u8,
     );
 
+    // controller_config = set_bit(
+    //     controller_config,
+    //     ControllerRegisterFlags::MouseEnable as u8,
+    // );
+
     controller_config = set_bit(
         controller_config,
         ControllerRegisterFlags::KeyboardTranlation as u8,
     );
+
+    print_serial!("{:b}\n", controller_config);
 
     write(PS2_CMD, 0x60)?;
     write(PS2_DATA, controller_config)?;
@@ -151,10 +172,8 @@ pub fn init() -> Result<(), &'static str> {
                 KEYBOARD.free();
             }
             PS2Device::PS2Mouse => {
-                // MOUSE.lock().init();
-                // MOUSE.free();
-
-                print_serial!("Setup mouse\n");
+                MOUSE.lock().init();
+                MOUSE.free();
             }
             _ => panic!("Unknown device"),
         }

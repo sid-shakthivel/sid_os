@@ -17,6 +17,9 @@ mod multitask;
 mod output;
 mod utils;
 
+#[macro_use]
+extern crate bitflags;
+
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::memory::paging;
 use crate::multitask::PROCESS_MANAGER;
@@ -72,13 +75,13 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     //     PROCESS_MANAGER.free();
     // }
 
+    interrupts::init();
+
     interrupts::pit::PIT.lock().init();
     interrupts::pit::PIT.free();
 
     interrupts::pic::PICS.lock().init();
     interrupts::pic::PICS.free();
-
-    interrupts::init();
 
     interrupts::enable();
 

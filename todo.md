@@ -5,10 +5,8 @@
 - When popping should really kfree the address
 - Zero the BSS (when we have it)
 - Implement adding/removing list nodes
-- Start the framebuffer
-- Proper PS2 keyboard
-- Proper PS2 mouse
 - Fix the kmalloc bug in which size is always increased whenever called
+- Generic bitwise stuff
 - info tab specifies v_addr then p_addr
 
 http://www.jamesmolloy.co.uk/tutorial_html/9.-Multitasking.html

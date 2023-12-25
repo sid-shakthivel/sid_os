@@ -9,6 +9,7 @@ An interrupt descriptor table defines what each interrupt will do (First 32 Exce
 use self::pic::PicFunctions;
 use self::pic::PICS;
 use crate::dev::keyboard::KEYBOARD;
+use crate::dev::mouse::MOUSE;
 #[warn(unused_assignments)]
 use crate::interrupts::idt::GateType;
 use crate::interrupts::idt::IDTEntry;
@@ -22,6 +23,7 @@ use crate::multitask::PROCESS_MANAGER;
 use crate::print_serial;
 use crate::setup_exception_with_e_handler;
 use crate::setup_interrupt_handler;
+use crate::utils::multiboot2::MULTIBOOT2_BOOTLOADER_MAGIC;
 use crate::utils::ports::inb;
 use crate::CONSOLE;
 use core::arch::asm;
@@ -127,6 +129,10 @@ pub extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame, interrupt
             KEYBOARD.lock().handle_keyboard();
             KEYBOARD.free();
         }
+        0x2c => {
+            MOUSE.lock().handle_mouse_interrupt();
+            MOUSE.free();
+        }
         _ => {}
     }
 
@@ -171,7 +177,7 @@ pub extern "C" fn pit_handler(old_task_rsp: usize) -> usize {
         }
     }
 
-    print_serial!("In Pit Handler\n");
+    // print_serial!("In Pit Handler\n");
 
     PICS.lock().acknowledge(0x20 as u8);
     PICS.free();
@@ -212,6 +218,8 @@ pub fn init() {
         IDT[0x20] = IDTEntry::new_default_interrupt(setup_pit_handler); // Timer (PIT)
         IDT[0x21] =
             IDTEntry::new_default_interrupt(setup_interrupt_handler!(interrupt_handler, 0x21)); // Keyboard
+        IDT[0x2c] =
+            IDTEntry::new_default_interrupt(setup_interrupt_handler!(interrupt_handler, 0x2c)); // Mouse
 
         // Syscalls
 
