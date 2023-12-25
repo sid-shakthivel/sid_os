@@ -3,7 +3,7 @@ mod window;
 mod wm;
 
 use crate::gfx::window::Window;
-use crate::gfx::wm::WindowManager;
+use crate::gfx::wm::{WindowManager, WM};
 use crate::memory::allocator::kmalloc;
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::memory::{page_frame_allocator, paging};
@@ -33,17 +33,27 @@ pub fn init(fb_tag: &multiboot2::FramebufferTag) {
     // Map the address to video memory
     paging::map_pages(number_of_pages, address, fb_tag.addr as usize);
 
-    for y in 0..fb_tag.height {
-        for x in 0..fb_tag.width {
-            let offset = ((address as u32) + (y * 4096) + ((x * 32) / 8)) as *mut u32;
-            unsafe {
-                *offset = 0x3499fe;
-            }
-        }
-    }
+    // for y in 0..fb_tag.height {
+    //     for x in 0..fb_tag.width {
+    //         let offset = ((address as u32) + (y * 4096) + ((x * 32) / 8)) as *mut u32;
+    //         unsafe {
+    //             *offset = 0x3499fe;
+    //         }
+    //     }
+    // }
 
-    let mut wm: WindowManager = WindowManager::new();
-    wm.set_fb_address(address);
-    wm.add_window(Window::new(50, 50, 300, 200));
-    wm.paint();
+    WM.lock().set_fb_address(address);
+    WM.free();
+
+    WM.lock().add_window(Window::new(200, 125, 300, 300));
+    WM.free();
+
+    WM.lock().add_window(Window::new(50, 50, 300, 200));
+    WM.free();
+
+    WM.lock().add_window(Window::new(25, 25, 100, 100));
+    WM.free();
+
+    WM.lock().paint();
+    WM.free();
 }

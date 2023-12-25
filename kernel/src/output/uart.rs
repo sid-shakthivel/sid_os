@@ -76,6 +76,8 @@ impl fmt::Write for Console {
 macro_rules! print_serial {
     ($($arg:tt)*) => ({
         use core::fmt::Write;
+        use crate::output::uart::CONSOLE;
+
         CONSOLE.lock().write_fmt(format_args!($($arg)*)).unwrap();
         CONSOLE.free();
     });

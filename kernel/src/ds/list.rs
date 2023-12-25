@@ -91,6 +91,8 @@ impl<T: Clone> List<T> {
             panic!("List-Remove: Index Out of Bounds");
         }
 
+        // print_serial!("Removing at index {}\n", index);
+
         let length = self.length;
 
         match index {

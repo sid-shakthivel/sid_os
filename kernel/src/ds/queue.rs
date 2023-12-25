@@ -68,8 +68,14 @@ impl<T: Clone> Queue<T> {
     pub fn dequeue(&mut self) -> T {
         return self
             .list
-            .remove_at(self.list.length)
+            .remove_at(self.list.length - 1)
             .expect("Value expected when popping");
+    }
+
+    pub fn empty(&mut self) {
+        while self.list.head.is_some() {
+            self.dequeue();
+        }
     }
 
     pub fn get_element(&mut self, target_index: usize) -> Option<(usize, T)> {

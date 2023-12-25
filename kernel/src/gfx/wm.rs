@@ -2,6 +2,8 @@ use super::rect::{self, Rect};
 use super::window::Window;
 use crate::ds::queue::Queue;
 use crate::ds::stack::Stack;
+use crate::print_serial;
+use crate::utils::spinlock::Lock;
 
 const SCREEN_WIDTH: u16 = 1024;
 const SCREEN_HEIGHT: u16 = 768;
@@ -41,33 +43,54 @@ impl<'a> WindowManager<'a> {
         self.paint_windows();
     }
 
+    pub fn handle_mouse_event(coordinates: (usize, usize), is_left_click: usize) {
+        
+    }
+
     fn paint_background(&self) {
         // Create a new rectangle of the entire screen
         let mut rect = Rect::new(0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
         let mut splitted_rects = Queue::<Rect>::new();
         splitted_rects.enqueue(rect);
 
-        // Punch out spaces for the windows
+        // // Punch out spaces for the windows
         for w_window in self.windows.list.into_iter() {
             let window = &w_window.expect("Window expected").payload;
             let splitting_rect = window.generate_rect();
             rect::split_rects(&mut splitted_rects, &splitting_rect);
+
+            print_serial!("New set of rectangles\n");
+            for rect in splitted_rects.list.into_iter() {
+                let rect = rect.unwrap().payload;
+                print_serial!("{:?}\n", rect);
+            }
         }
 
         // Paint the remaining area
         for rect in splitted_rects.list.into_iter() {
             let rect = rect.unwrap().payload;
+            // print_serial!("{:?}\n", rect);
             rect.paint(BACKGROUND_COLOUR, self.fb_address);
         }
     }
 
     fn paint_windows(&self) {
         for (index, window) in self.windows.list.into_iter().enumerate() {
-            
+            let current_window = &window.unwrap().payload;
             let windows_above = self.get_above_windows(index);
 
+            let mut rect = current_window.generate_rect();
+            let mut splitted_rects = Queue::<Rect>::new();
+            splitted_rects.enqueue(rect);
+
             for window in windows_above.list.into_iter() {
-                let rect = window.unwrap().payload.clone().generate_rect();
+                let splitting_rect = window.unwrap().payload.clone().generate_rect();
+                rect::split_rects(&mut splitted_rects, &splitting_rect);
+            }
+
+            for rect in splitted_rects.list.into_iter() {
+                let rect = rect.unwrap().payload;
+                // print_serial!("{:?}\n", rect);
                 rect.paint(WIN_BACKGROUND_COLOUR, self.fb_address);
             }
         }
@@ -87,3 +110,5 @@ impl<'a> WindowManager<'a> {
         windows_above
     }
 }
+
+pub static WM: Lock<WindowManager> = Lock::new(WindowManager::new());

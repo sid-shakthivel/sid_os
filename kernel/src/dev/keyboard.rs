@@ -7,7 +7,7 @@
 
 use super::ps2;
 use crate::utils::spinlock::Lock;
-use crate::{print_serial, CONSOLE};
+use crate::{print_serial};
 
 pub struct Keyboard {
     is_upper: bool,

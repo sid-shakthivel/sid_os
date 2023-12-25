@@ -1,4 +1,7 @@
-use crate::ds::{list::List, queue::Queue};
+use crate::{
+    ds::{list::List, queue::Queue},
+    print_serial,
+};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Rect {
@@ -16,6 +19,13 @@ impl Rect {
             right,
             left,
         }
+    }
+
+    pub fn does_intersect(&self, rect: &Rect) -> bool {
+        return self.left < rect.right
+            && self.right > rect.left
+            && self.top < rect.bottom
+            && self.bottom > rect.top;
     }
 
     pub fn paint(&self, colour: u32, fb_address: usize) {
@@ -37,43 +47,35 @@ impl Rect {
 fn split_rect(rect: &mut Rect, split_rect: &Rect) -> Queue<Rect> {
     let mut splitted_rects: Queue<Rect> = Queue::<Rect>::new();
 
+    // top left, bottom, right
+
     // Split by left edge
-    if (split_rect.left >= rect.left && split_rect.left <= rect.right) {
-        splitted_rects.enqueue(Rect::new(
-            rect.top,
-            rect.bottom,
-            split_rect.left - 1,
-            split_rect.left,
-        ));
+    if (split_rect.left > rect.left && split_rect.left < rect.right) {
+        splitted_rects.enqueue(Rect::new(rect.top, rect.bottom, split_rect.left, rect.left));
         rect.left = split_rect.left;
     }
 
     // Split by top edge
-    if (split_rect.top >= rect.top && split_rect.top <= rect.bottom) {
-        splitted_rects.enqueue(Rect::new(
-            rect.top,
-            split_rect.bottom - 1,
-            rect.right,
-            rect.left,
-        ));
+    if (split_rect.top > rect.top && split_rect.top < rect.bottom) {
+        splitted_rects.enqueue(Rect::new(rect.top, split_rect.top, rect.right, rect.left));
         rect.top = split_rect.top;
     }
 
     // Split by right edge
-    if (split_rect.right >= rect.left && split_rect.right <= rect.left) {
+    if (split_rect.right > rect.left && split_rect.right < rect.right) {
         splitted_rects.enqueue(Rect::new(
             rect.top,
             rect.bottom,
             rect.right,
-            split_rect.right + 1,
+            split_rect.right,
         ));
         rect.right = split_rect.right;
     }
 
     // Split by bottom edge
-    if (split_rect.bottom >= rect.top && split_rect.bottom <= rect.bottom) {
+    if (split_rect.bottom > rect.top && split_rect.bottom < rect.bottom) {
         splitted_rects.enqueue(Rect::new(
-            split_rect.bottom + 1,
+            split_rect.bottom,
             rect.bottom,
             rect.right,
             rect.left,
@@ -89,23 +91,27 @@ fn split_rect(rect: &mut Rect, split_rect: &Rect) -> Queue<Rect> {
     MEMORY: NEED TO FREE!
 */
 pub fn split_rects(rects: &mut Queue<Rect>, splitting_rect: &Rect) {
-    // for (index, rect) in rects.list.into_iter().enumerate() {
-    //     let mut working_rect = rect.expect("Rect: Expected rect").payload;
-    //     let mut splitted_rects = split_rect(&mut working_rect, splitting_rect);
-    //     rects.list.remove_at(index);
+    let mut test_rects = Queue::<Rect>::new();
 
-    //     for rect in splitted_rects.list.into_iter() {
-    //         rects.enqueue(rect.unwrap().payload);
-    //     }
-    // }
-
-    for i in 0..rects.list.length {
+    for mut i in 0..rects.list.length {
         let mut working_rect = rects.get_element(i).unwrap();
-        rects.list.remove_at(working_rect.0);
+
+        // Check for intersection
+        if (!splitting_rect.does_intersect(&working_rect.1)) {
+            test_rects.enqueue(working_rect.1.clone());
+            continue;
+        }
+
         let mut splitted_rects = split_rect(&mut working_rect.1, splitting_rect);
 
         for rect in splitted_rects.list.into_iter() {
-            rects.enqueue(rect.unwrap().payload);
+            test_rects.enqueue(rect.unwrap().payload);
         }
+    }
+
+    rects.empty();
+
+    for rect in test_rects.list.into_iter() {
+        rects.enqueue(rect.unwrap().payload);
     }
 }

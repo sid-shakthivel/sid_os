@@ -7,6 +7,8 @@
 - Implement adding/removing list nodes
 - Fix the kmalloc bug in which size is always increased whenever called
 - Generic bitwise stuff
+- Fix the PS2 bugs
+- Memory issues within the window manager
 - info tab specifies v_addr then p_addr
 
 http://www.jamesmolloy.co.uk/tutorial_html/9.-Multitasking.html
