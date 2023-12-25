@@ -17,9 +17,7 @@ mod multitask;
 mod output;
 mod utils;
 
-#[macro_use]
-extern crate bitflags;
-
+use crate::gfx::init;
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::memory::paging;
 use crate::multitask::PROCESS_MANAGER;

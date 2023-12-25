@@ -47,11 +47,12 @@ pub struct Mouse {
 
 impl Mouse {
     pub fn init(&mut self) {
-        self.enable_z_axis();
-        self.enable_5_buttons();
-        self.enable_scanning();
+        // self.enable_z_axis();
+        // self.enable_5_buttons();
+        // self.enable_scanning();
 
-        print_serial!("Mouse Type: {:?}\n", self.get_type());
+        // print_serial!("Mouse Type: {:?}\n", self.get_type());
+
         // assert!(
         //     self.get_type() == ps2::PS2Device::PS2MouseFiveButtons,
         //     "Mouse: Is not PS2 MouseFiveButtons"
