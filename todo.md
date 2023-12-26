@@ -12,10 +12,8 @@ Refactoring
 
 Bugs:
 - Dirty rects when dragging window doesn't fully work
-- Kmalloc bug always increases size whenever called (recursive)
 
 New:
-- Font support
 - Change design of windows
 - Syscalls
 - Need to extend multitasking capabilities

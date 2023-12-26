@@ -1,3 +1,4 @@
+use super::psf::{self, Font};
 use super::rect::{self, Rect};
 use super::window::Window;
 use crate::ds::queue::Queue;
@@ -20,7 +21,8 @@ pub struct WindowManager<'a> {
     current_window: Option<Window>,
     drag_offset: (u16, u16),
     mouse_coords: (u16, u16),
-    pub fb_address: usize,
+    fb_address: usize,
+    font: Option<Font>,
     marker: core::marker::PhantomData<&'a Window>,
 }
 
@@ -32,12 +34,21 @@ impl<'a> WindowManager<'a> {
             fb_address: 0,
             mouse_coords: (384, 512),
             drag_offset: (0, 0),
+            font: None,
             marker: core::marker::PhantomData,
         }
     }
 
     pub fn set_fb_address(&mut self, address: usize) {
         self.fb_address = address;
+    }
+
+    pub fn set_font(&mut self) {
+        let (font_start, font_ptr) = psf::get_font_data();
+        self.font = Some(Font {
+            metadata: unsafe { &*(font_ptr) },
+            start_address: font_start,
+        });
     }
 
     pub fn add_window(&mut self, window: Window) {

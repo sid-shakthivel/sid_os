@@ -19,6 +19,7 @@ mod utils;
 
 use crate::dev::mouse;
 use crate::gfx::init;
+use crate::memory::allocator::{kfree, kmalloc, print_memory_list};
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::memory::paging;
 use crate::multitask::PROCESS_MANAGER;
@@ -81,8 +82,8 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
         .init(multiboot_info.end_address(), end_memory);
     PAGE_FRAME_ALLOCATOR.free();
 
-    grub::bga_set_video_mode();
-    gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
+    // grub::bga_set_video_mode();
+    // gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
 
     // for tag in multiboot_info.get_module_tags() {
     //     // All modules are programs (so far)
@@ -97,6 +98,14 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     //     PROCESS_MANAGER.free();
     // }
 
+    let test = kmalloc(4);
+    print_serial!("The kmalloc'd address is 0x{:x}\n", test as usize);
+    kfree(test);
+    print_memory_list();
+    let best = kmalloc(4);
+    print_serial!("The kmalloc'd address is 0x{:x}\n", best as usize);
+    print_memory_list();
+
     interrupts::init();
 
     interrupts::pit::PIT.lock().init();
@@ -105,7 +114,7 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     interrupts::pic::PICS.lock().init();
     interrupts::pic::PICS.free();
 
-    interrupts::enable();
+    // interrupts::enable();
 
     print_serial!("Finished Execution\n");
 

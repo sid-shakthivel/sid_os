@@ -6,7 +6,7 @@
 const PSF_MAGIC: u32 = 0x864ab572;
 
 #[derive(Copy, Clone, Debug)]
-struct PsfFont {
+pub struct PsfFont {
     magic: u32,
     version: u32,         // Usually 0
     header_size: u32,     // Offset of bitmaps
@@ -17,9 +17,9 @@ struct PsfFont {
     width: u32,           // In pixels
 }
 
-struct Font {
-    metadata: &'static PsfFont,
-    start_address: u32,
+pub struct Font {
+    pub metadata: &'static PsfFont,
+    pub start_address: u32,
 }
 
 impl PsfFont {
@@ -76,25 +76,16 @@ impl PsfFont {
 //     }
 // }
 
-pub fn init() {
+pub fn get_font_data() -> (u32, *const PsfFont) {
     // Setup font
     let font_end = unsafe { &_binary_font_psf_end as *const _ as u32 };
     let font_size = unsafe { &_binary_font_psf_size as *const _ as u32 };
     let font_start = font_end - font_size;
 
-    unsafe {
-        FONT_TEST = Some(*(font_start as *const PsfFont));
-        FONT_START = font_start;
-        FONT_TEST.unwrap().verify();
-    }
+    (font_start, font_start as *const PsfFont)
 }
 
 extern "C" {
     pub(crate) static _binary_font_psf_end: usize;
     pub(crate) static _binary_font_psf_size: usize;
 }
-
-static mut FONT_TEST: Option<PsfFont> = None;
-static mut FONT_START: u32 = 0;
-
-// pub static FONT

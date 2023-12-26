@@ -6,7 +6,7 @@ To manage the frames, a stack of free pages along with a pointer to first page a
 use crate::ds::stack;
 use crate::{print_serial, utils::spinlock::Lock, CONSOLE};
 
-use super::paging;
+use super::paging::{self, PAGE_SIZE};
 
 #[derive(Debug)]
 pub struct PageFrame {
@@ -92,6 +92,15 @@ impl PageFrameAllocator {
 
     // Add the address of the free'd page to the stack
     pub unsafe fn free_page_frame(&mut self, frame_address: *mut usize) {
+        // Need to zero out the page for safety
+        let max_offset = PAGE_SIZE / 8;
+
+        for i in 0..max_offset {
+            unsafe {
+                *frame_address.offset(i as isize) = 0;
+            }
+        }
+
         let new_free_frame = unsafe { &mut *(frame_address as *mut PageFrame) };
 
         // TODO: Clear all data within the page frame
