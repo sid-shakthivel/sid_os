@@ -1,6 +1,7 @@
+mod psf;
 mod rect;
 mod window;
-mod wm;
+pub mod wm;
 
 use crate::gfx::window::Window;
 use crate::gfx::wm::{WindowManager, WM};
@@ -48,12 +49,15 @@ pub fn init(fb_tag: &multiboot2::FramebufferTag) {
     WM.lock().add_window(Window::new(200, 125, 300, 300));
     WM.free();
 
-    WM.lock().add_window(Window::new(50, 50, 300, 200));
-    WM.free();
+    // WM.lock().add_window(Window::new(50, 50, 300, 200));
+    // WM.free();
 
-    WM.lock().add_window(Window::new(25, 25, 100, 100));
-    WM.free();
+    // WM.lock().add_window(Window::new(25, 25, 100, 100));
+    // WM.free();
 
     WM.lock().paint();
     WM.free();
+
+    // WM.lock().handle_mouse_event((1, 1), true);
+    // WM.free();
 }

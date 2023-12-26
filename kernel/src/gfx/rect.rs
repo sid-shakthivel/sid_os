@@ -5,10 +5,10 @@ use crate::{
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Rect {
-    top: u16,
-    bottom: u16,
-    right: u16,
-    left: u16,
+    pub top: u16,
+    pub bottom: u16,
+    pub right: u16,
+    pub left: u16,
 }
 
 impl Rect {
@@ -107,6 +107,10 @@ pub fn split_rects(rects: &mut Queue<Rect>, splitting_rect: &Rect) {
         for rect in splitted_rects.list.into_iter() {
             test_rects.enqueue(rect.unwrap().payload);
         }
+
+        if (i > 0) {
+            i -= 2;
+        }
     }
 
     rects.empty();
@@ -114,4 +118,30 @@ pub fn split_rects(rects: &mut Queue<Rect>, splitting_rect: &Rect) {
     for rect in test_rects.list.into_iter() {
         rects.enqueue(rect.unwrap().payload);
     }
+
+    // let mut index = 0;
+
+    // while index < rects.list.length {
+    //     let mut raw = rects.get_element(index).unwrap().1;
+
+    //     // If the clipping rect intersects with a rectangle (subject) split it or else move onto the next one
+    //     if splitting_rect.left < raw.right
+    //         && splitting_rect.right > raw.left
+    //         && splitting_rect.top < raw.bottom
+    //         && splitting_rect.bottom > raw.top
+    //     {
+    //         // Remove old rectangle and replace with list of rects
+    //         let mut splitted_rects = split_rect(&mut raw, splitting_rect);
+    //         rects.list.remove_at(index);
+
+    //         for rect in splitted_rects.list.into_iter() {
+    //             rects.enqueue(rect.unwrap().payload);
+    //         }
+
+    //         // Reset the counter
+    //         index = 0;
+    //     } else {
+    //         index += 1;
+    //     }
+    // }
 }

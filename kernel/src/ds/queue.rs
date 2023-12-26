@@ -61,7 +61,7 @@ impl<T: Clone> Queue<T> {
     }
 
     pub fn enqueue(&mut self, payload: T) {
-        let addr = kmalloc(core::mem::size_of::<T>()) as usize;
+        let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
         self.list.push_back(payload, addr);
     }
 

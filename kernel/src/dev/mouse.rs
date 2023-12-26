@@ -14,8 +14,9 @@
 */
 
 use super::ps2;
+use crate::gfx::wm::WM;
+use crate::print_serial;
 use crate::utils::spinlock::Lock;
-use crate::{print_serial, CONSOLE};
 
 #[repr(u8)]
 enum MouseByte1Bits {
@@ -78,8 +79,6 @@ impl Mouse {
     }
 
     fn handle_mouse_packets(&mut self) {
-        print_serial!("Handling mouse\n");
-
         let mut is_left_clicked = false;
 
         // Check overflows, if set, discard packet
@@ -108,7 +107,6 @@ impl Mouse {
 
         // X movement and Y movement values must be read as a 9 bit or greater SIGNED value if bit is enabled
         if self.mouse_packets[0] & (1 << 4) == 0x10 {
-            print_serial!("This occurs\n");
             self.mouse_x = self
                 .mouse_x
                 .wrapping_add(self.sign_extend(self.mouse_packets[1]) as usize);
@@ -124,10 +122,9 @@ impl Mouse {
             self.mouse_y = self.mouse_y.wrapping_add(adjusted_y as usize);
         }
 
-        // WINDOW_MANAGER
-        //     .lock()
-        //     .handle_mouse(self.mouse_x, self.mouse_y, is_left_clicked);
-        // WINDOW_MANAGER.free();
+        // WM.lock()
+        //     .handle_mouse_event((self.mouse_x as u16, self.mouse_y as u16), is_left_clicked);
+        // WM.free();
     }
 
     fn enable_scanning(&self) {

@@ -17,6 +17,7 @@ mod multitask;
 mod output;
 mod utils;
 
+use crate::dev::mouse;
 use crate::gfx::init;
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::memory::paging;
@@ -31,6 +32,27 @@ use core::mem;
 use core::panic::PanicInfo;
 use core::prelude::v1;
 
+use spin::Lazy;
+use spinning_top::Spinlock;
+
+use ps2_mouse::{Mouse, MouseState};
+pub static MOUSE2: Lazy<Spinlock<Mouse>> = Lazy::new(|| Spinlock::new(Mouse::new()));
+
+fn init_mouse() {
+    MOUSE2.lock().init().unwrap();
+    MOUSE2.lock().set_on_complete(on_complete);
+}
+
+fn on_complete(mouse_state: MouseState) {
+    use crate::gfx::wm::WM;
+
+    WM.lock().handle_mouse_event(
+        (mouse_state.get_y() * -1, mouse_state.get_x()),
+        mouse_state.left_button_down(),
+    );
+    WM.free();
+}
+
 #[no_mangle]
 pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     interrupts::disable();
@@ -42,7 +64,9 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     CONSOLE.free();
 
     memory::gdt::init();
-    dev::init();
+    // dev::init();
+
+    init_mouse();
 
     let multiboot_info = multiboot2::load(multiboot_info_addr, magic);
 

@@ -130,8 +130,13 @@ pub extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame, interrupt
             KEYBOARD.free();
         }
         0x2c => {
-            MOUSE.lock().handle_mouse_interrupt();
-            MOUSE.free();
+            // MOUSE.lock().handle_mouse_interrupt();
+            // MOUSE.free();
+
+            use crate::MOUSE2;
+
+            let packet = inb(0x60);
+            MOUSE2.lock().process_packet(packet);
         }
         _ => {}
     }

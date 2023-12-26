@@ -18,7 +18,7 @@ impl<T: Clone> Stack<T> {
 
     // Add to top of list
     pub fn push(&mut self, payload: T) {
-        let addr = kmalloc(core::mem::size_of::<T>()) as usize;
+        let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
         self.list.push_front(payload, addr);
     }
 
