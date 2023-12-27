@@ -42,8 +42,6 @@ pub fn kmalloc(mut size: usize) -> *mut usize {
     _kmalloc(size, true)
 }
 
-pub static mut counter: u32 = 0;
-
 fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
     if (should_update_size) {
         // Size must include the size of a memory block (in bytes)
@@ -51,8 +49,6 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
 
         // Must align block size by 8
         size = align(size);
-
-        print_serial!("Final size is {}\n", size);
     }
 
     let (index, wrapped_memory_block) = find_first_fit(size);
@@ -69,6 +65,13 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
                 let mut address_of_header = get_header_address(memory_block.data);
                 let mut address_of_node = get_base_address(memory_block.data);
 
+                // Zero the entirety of the data
+                for i in 0..(memory_block.size / 8) {
+                    unsafe {
+                        *address_of_node.offset(i as isize) = 0;
+                    }
+                }
+
                 let header = unsafe { &mut *(address_of_header as *mut MemoryBlock) };
 
                 // Adjust size correctly for correct offset
@@ -77,17 +80,10 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
                 let dp = create_new_memory_block(size, address_of_node, false);
 
                 // Add remaining section of block
-                address_of_node =
-                    unsafe { address_of_node.offset(NODE_MEMORY_BLOCK_SIZE as isize) };
+                address_of_node = unsafe {
+                    address_of_node.offset((size_in_u64 as isize + NODE_MEMORY_BLOCK_SIZE))
+                };
                 create_new_memory_block(memory_block.size - size, address_of_node, true);
-
-                unsafe {
-                    if counter == 1 {
-                        // panic!("oh no {:?}\n", memory_block);
-                    }
-
-                    counter += 1;
-                }
 
                 return dp;
             } else {
@@ -126,23 +122,23 @@ pub fn kfree(dp: *mut usize) {
     let node_address = get_base_address(dp);
     let header_address = get_header_address(dp);
 
-    let header = unsafe { &mut *(header_address as *mut MemoryBlock) };
+    let header = unsafe { (&mut *(header_address as *mut MemoryBlock)).clone() };
 
-    print_serial!("0x{:x} {:?}\n", header_address as usize, header);
+    // print_serial!("0x{:x} {:?}\n", header_address as usize, header);
 
     let size_in_u64 = header.size / 8;
 
     // Need to zero the data for safety
-    // for i in 0..size_in_u64 {
-    //     unsafe {
-    //         *header_address.offset(i as isize) = 0;
-    //     }
-    // }
+    for i in 0..NODE_MEMORY_BLOCK_SIZE {
+        unsafe {
+            *node_address.offset(i as isize) = 0;
+        }
+    }
 
     // Add block to list of free blocks (to the front)
     FREE_MEMORY_BLOCK_LIST
         .lock()
-        .push_front(header.clone(), node_address as usize);
+        .push_front(header, node_address as usize);
     FREE_MEMORY_BLOCK_LIST.free();
 
     // Check next node to merge memory regions together to alleviate fragmentation
@@ -187,6 +183,7 @@ fn find_first_fit(size: usize) -> (usize, Option<MemoryBlock>) {
 }
 
 pub fn print_memory_list() {
+    print_serial!("printing free memory list\n");
     for (i, memory_block) in FREE_MEMORY_BLOCK_LIST.lock().into_iter().enumerate() {
         FREE_MEMORY_BLOCK_LIST.free();
         let test = memory_block.unwrap();
@@ -210,7 +207,7 @@ pub fn extend_memory_region(pages: usize) {
     Recieves size of block and address in which to create a new block
 */
 fn create_new_memory_block(size: usize, address: *mut usize, is_free: bool) -> *mut usize {
-    print_serial!("Creating a new memory block at 0x{:x}\n", address as usize);
+    // print_serial!("Creating a new memory block at 0x{:x}\n", address as usize);
     let dp_addr = unsafe { address.offset(NODE_MEMORY_BLOCK_SIZE) };
     let new_memory_block = MemoryBlock::new(dp_addr, size);
 

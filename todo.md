@@ -4,11 +4,9 @@ Remember:
 
 Refactoring
 - PS2 Mouse Things
-- When popping in stack/queue should kfree the address
-- Need to free memory and clean it up (make it all zero)
 - Separate out the bitwise into a separate file
-- Replace the free stack within PFA
 - Add font to makefile
+- Windows
 
 Bugs:
 - Dirty rects when dragging window doesn't fully work

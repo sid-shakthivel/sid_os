@@ -86,7 +86,7 @@ impl<T: Clone> List<T> {
         self.length += 1;
     }
 
-    pub fn remove_at(&mut self, index: usize) -> Option<T> {
+    pub fn remove_at(&mut self, index: usize) -> Option<(T, *mut usize)> {
         if index < 0 || index > self.length {
             panic!("List-Remove: Index Out of Bounds");
         }
@@ -99,6 +99,7 @@ impl<T: Clone> List<T> {
             0 => unsafe {
                 if (self.head.is_some()) {
                     let head = ListNode::get_mut_ref(self.head);
+                    let address = self.head.unwrap() as *mut usize;
 
                     if (head.next.is_some()) {
                         let head_next = ListNode::get_mut_ref(head.next);
@@ -110,23 +111,28 @@ impl<T: Clone> List<T> {
 
                     self.length -= 1;
 
-                    return Some(payload);
+                    return Some((payload, address));
                 }
             },
             length => unsafe {
                 if (self.tail.is_some()) {
                     let tail = ListNode::get_mut_ref(self.tail);
-                    let tail_prev = ListNode::get_mut_ref(tail.prev);
+
+                    if (tail.prev.is_some()) {
+                        let tail_prev = ListNode::get_mut_ref(tail.prev);
+                        tail_prev.next = None;
+                    }
+
+                    let address = self.tail.unwrap() as *mut usize;
 
                     self.tail = tail.prev;
 
                     let payload = tail.payload.clone();
-                    tail_prev.next = None;
                     tail.prev = None;
 
                     self.length -= 1;
 
-                    return Some(payload);
+                    return Some((payload, address));
                 }
             },
             _ => {

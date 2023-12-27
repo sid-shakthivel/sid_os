@@ -3,6 +3,7 @@ use super::rect::{self, Rect};
 use super::window::Window;
 use crate::ds::queue::Queue;
 use crate::ds::stack::Stack;
+use crate::memory::allocator::print_memory_list;
 use crate::print_serial;
 use crate::utils::spinlock::Lock;
 
@@ -11,6 +12,11 @@ const SCREEN_HEIGHT: u16 = 768;
 
 const BACKGROUND_COLOUR: u32 = 0x3499fe;
 const WIN_BACKGROUND_COLOUR: u32 = 0xFFBBBBBB;
+
+// const WINDOW_BORDER_COLOUR: u32 = 0xFF000000;
+const WINDOW_BORDER_COLOUR: u32 = 0xFF000000;
+const WINDOW_TITLE_COLOUR: u32 = 0x7092be;
+const WINDOW_TITLE_HEIGHT: u16 = 20;
 
 /*
     Keep a stack of all windows
@@ -47,7 +53,7 @@ impl<'a> WindowManager<'a> {
         let (font_start, font_ptr) = psf::get_font_data();
         self.font = Some(Font {
             metadata: unsafe { &*(font_ptr) },
-            start_address: font_start,
+            start_addr: font_start,
         });
     }
 
@@ -235,19 +241,15 @@ impl<'a> WindowManager<'a> {
         // Create a new rectangle of the entire screen
         let mut rect = Rect::new(0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
         let mut splitted_rects = Queue::<Rect>::new();
+
         splitted_rects.enqueue(rect);
 
         // // Punch out spaces for the windows
         for w_window in self.windows.list.into_iter() {
             let window = &w_window.expect("Window expected").payload;
             let splitting_rect = window.generate_rect();
-            rect::split_rects(&mut splitted_rects, &splitting_rect);
 
-            // print_serial!("New set of rectangles\n");
-            for rect in splitted_rects.list.into_iter() {
-                let rect = rect.unwrap().payload;
-                // print_serial!("{:?}\n", rect);
-            }
+            rect::split_rects(&mut splitted_rects, &splitting_rect);
         }
 
         // Paint the remaining area
@@ -272,10 +274,46 @@ impl<'a> WindowManager<'a> {
                 rect::split_rects(&mut splitted_rects, &splitting_rect);
             }
 
+            // // Paint the title text and centre it
+            // FRAMEBUFFER.lock().draw_string(
+            //     Some(&self.clipped_rectangles),
+            //     self.title,
+            //     self.x + (self.width / 2 - (self.title.as_bytes().len() * 8) as u64 / 2),
+            //     self.y + (WINDOW_TITLE_HEIGHT - 10) / 2,
+            //     self.x,
+            //     self.y,
+            //     self.width,
+            //     self.height,
+            // );
+
+            // WM.lock().add_window(Window::new(200, 125, 300, 300));
+
+            let clip_1 = Rect::new(125 + 3, 125 + WINDOW_TITLE_HEIGHT, 500 - 3, 200 + 3);
+            let clip_2 = Rect::new(125 + WINDOW_TITLE_HEIGHT, 425 - 3, 500 - 3, 200 + 3);
+            let clip_3 = Rect::new(125, 425, 500, 200);
+
+            let text = "Terminal";
+            let x_base = 200 + (150 - (text.as_bytes().len() * 8) / 2);
+            let y_base = 125 + (WINDOW_TITLE_HEIGHT - 10) / 2;
+
+            let font = &self.font.unwrap();
+
             for rect in splitted_rects.list.into_iter() {
                 let rect = rect.unwrap().payload;
-                // print_serial!("{:?}\n", rect);
-                rect.paint(WIN_BACKGROUND_COLOUR, self.fb_address);
+                // rect.paint(WIN_BACKGROUND_COLOUR, self.fb_address);
+
+                // Paint each component of the window
+
+                // Paint top title bar
+                rect.paint_special(WINDOW_TITLE_COLOUR, self.fb_address, &clip_1);
+
+                // Paint main area
+                rect.paint_special(WIN_BACKGROUND_COLOUR, self.fb_address, &clip_2);
+
+                // Paint the outline
+                rect.paint_rect_outline(WINDOW_BORDER_COLOUR, self.fb_address, &clip_3);
+
+                rect.paint_text(text, x_base as u16, y_base, font, self.fb_address);
             }
         }
     }

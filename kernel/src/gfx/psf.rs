@@ -8,18 +8,19 @@ const PSF_MAGIC: u32 = 0x864ab572;
 #[derive(Copy, Clone, Debug)]
 pub struct PsfFont {
     magic: u32,
-    version: u32,         // Usually 0
-    header_size: u32,     // Offset of bitmaps
-    flags: u32,           // 0 If there isn't a unicode table
-    glymph_num: u32,      // Number of glyghs
-    bytes_per_glyph: u32, // Size of each glygh
-    height: u32,          // In pixels
-    width: u32,           // In pixels
+    version: u32,             // Usually 0
+    pub header_size: u32,     // Offset of bitmaps
+    flags: u32,               // 0 If there isn't a unicode table
+    glymph_num: u32,          // Number of glyghs
+    pub bytes_per_glyph: u32, // Size of each glygh
+    height: u32,              // In pixels
+    width: u32,               // In pixels
 }
 
+#[derive(Clone, Copy)]
 pub struct Font {
     pub metadata: &'static PsfFont,
-    pub start_address: u32,
+    pub start_addr: u32,
 }
 
 impl PsfFont {
@@ -42,39 +43,6 @@ impl PsfFont {
         assert!(self.width == 8, "PsfFont has not width of 8");
     }
 }
-
-// pub fn draw_string(string: &str, mut x_base: u64, y_base: u64) {
-//     let buffer_p = self.buffer as *mut u32;
-
-//     for character in string.as_bytes() {
-//         unsafe {
-//             if let Some(font) = FONT {
-//                 let glyph_address = (FONT_START
-//                     + font.header_size
-//                     + (font.bytes_per_glyph * (character.clone() as u32)))
-//                     as *mut u8;
-
-//                 for cy in 0..16 {
-//                     let mut index = 8;
-//                     for cx in 0..8 {
-//                         let adjusted_x = cx + x_base;
-//                         let adjusted_y = cy + y_base;
-
-//                         // Load correct bitmap for glyph
-//                         let glyph_offset: u16 =
-//                             (*glyph_address.offset(cy as isize) as u16) & (1 << index);
-//                         if glyph_offset > 0 {
-//                             *buffer_p.offset((adjusted_y * 4096 + adjusted_x) as isize) = 0x01;
-//                         }
-//                         index -= 1;
-//                     }
-//                 }
-
-//                 x_base += 8;
-//             }
-//         }
-//     }
-// }
 
 pub fn get_font_data() -> (u32, *const PsfFont) {
     // Setup font

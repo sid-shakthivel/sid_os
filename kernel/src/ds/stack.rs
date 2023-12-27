@@ -1,5 +1,5 @@
 use super::list::{List, ListNode};
-use crate::memory::allocator::{self, kmalloc};
+use crate::memory::allocator::{self, kfree, kmalloc, print_memory_list};
 
 #[derive(Debug)]
 pub struct Stack<T: 'static> {
@@ -13,12 +13,14 @@ impl<T: Clone> Stack<T> {
 
     // Remove from top of list
     pub fn pop(&mut self) -> T {
-        self.list.remove_at(0).expect("Value expected when popping")
+        let ret = self.list.remove_at(0).expect("Value expected when popping");
+        kfree(ret.1);
+        ret.0
     }
 
     // Add to top of list
     pub fn push(&mut self, payload: T) {
-        let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
+        let addr = kmalloc(core::mem::size_of::<T>()) as usize;
         self.list.push_front(payload, addr);
     }
 

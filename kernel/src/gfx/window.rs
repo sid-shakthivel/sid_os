@@ -1,6 +1,6 @@
 use super::rect::Rect;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Window {
     pub x: u16,
     pub y: u16,

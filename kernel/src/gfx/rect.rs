@@ -3,6 +3,8 @@ use crate::{
     print_serial,
 };
 
+use super::psf::Font;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Rect {
     pub top: u16,
@@ -26,6 +28,111 @@ impl Rect {
             && self.right > rect.left
             && self.top < rect.bottom
             && self.bottom > rect.top;
+    }
+
+    pub fn paint_text(
+        &self,
+        text: &'static str,
+        mut base_x: u16,
+        base_y: u16,
+        font: &Font,
+        fb_addr: usize,
+    ) {
+        // May break at some point but ...
+
+        for byte in text.as_bytes() {
+            self.draw_clipped_character(*byte as char, base_x, base_y, font, fb_addr);
+            base_x += 8;
+        }
+    }
+
+    fn draw_clipped_character(&self, character: char, x: u16, y: u16, font: &Font, fb_addr: usize) {
+        let glyph_address = (font.start_addr
+            + font.metadata.header_size
+            + (font.metadata.bytes_per_glyph * (character as u32)))
+            as *mut u8;
+
+        for cy in 0..16 {
+            let mut index = 8;
+            for cx in 0..8 {
+                let adjusted_x = x + cx;
+                let adjusted_y = y + cy;
+
+                // Load correct bitmap for glyph
+                let glyph_offset: u16 =
+                    unsafe { (*glyph_address.offset(cy as isize) as u16) & (1 << index) };
+                if glyph_offset > 0 {
+                    // self.draw_pixel(adjusted_x, adjusted_y, 0x00);
+
+                    let fb_offset = ((fb_addr as u32)
+                        + (adjusted_y as u32 * 4096)
+                        + ((adjusted_x as u32 * 32) / 8))
+                        as *mut u32;
+                    unsafe {
+                        *fb_offset = 0x00;
+                    }
+                }
+                index -= 1;
+            }
+        }
+    }
+
+    pub fn paint_rect_outline(&self, colour: u32, fb_address: usize, constrained_area: &Rect) {
+        // Need to constrict top, bottom, left and right
+
+        let clip_top = Rect::new(
+            constrained_area.top,
+            constrained_area.top + 3,
+            constrained_area.right,
+            constrained_area.left,
+        );
+
+        let clip_bottom = Rect::new(
+            constrained_area.bottom - 3,
+            constrained_area.bottom,
+            constrained_area.right,
+            constrained_area.left,
+        );
+
+        let clip_left = Rect::new(
+            constrained_area.top,
+            constrained_area.bottom,
+            constrained_area.left + 3,
+            constrained_area.left,
+        );
+
+        let clip_right = Rect::new(
+            constrained_area.top,
+            constrained_area.bottom,
+            constrained_area.right,
+            constrained_area.right - 3,
+        );
+
+        self.paint_special(colour, fb_address, &clip_top);
+        self.paint_special(colour, fb_address, &clip_bottom);
+        self.paint_special(colour, fb_address, &clip_left);
+        self.paint_special(colour, fb_address, &clip_right);
+    }
+
+    // Paints against a specific region
+    pub fn paint_special(&self, colour: u32, fb_address: usize, contrained_area: &Rect) {
+        // Clamp writeable area to both the clipped region and the contrained area in which it should be
+        let x_base = core::cmp::max(contrained_area.left, self.left);
+        let y_base = core::cmp::max(contrained_area.top, self.top);
+        let x_limit = core::cmp::min(contrained_area.right, self.right);
+        let y_limit = core::cmp::min(contrained_area.bottom, self.bottom);
+
+        print_serial!("{} {} {} {}\n", x_base, x_limit, y_base, y_limit);
+
+        for x in x_base..x_limit {
+            for y in y_base..y_limit {
+                let offset =
+                    ((fb_address as u32) + (y as u32 * 4096) + ((x as u32 * 32) / 8)) as *mut u32;
+                unsafe {
+                    *offset = colour;
+                }
+            }
+        }
     }
 
     pub fn paint(&self, colour: u32, fb_address: usize) {

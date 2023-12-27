@@ -36,13 +36,12 @@ impl<T: Clone> PriorityQueue<T> {
         self.list.push_back(priority_wrapped_node, addr);
     }
 
-    pub fn dequeue(&mut self) -> T {
-        return self
-            .list
-            .remove_at(self.list.length)
-            .expect("Value expected when popping")
-            .value;
-    }
+    // pub fn dequeue(&mut self) -> T {
+    //     let ret =self
+    //         .list
+    //         .remove_at(self.list.length)
+    //         .expect("Value expected when dequeing")
+    // }
 
     pub fn get_head(&mut self) -> &mut T {
         let value = self.list.head.expect("Head is undefined");
@@ -61,15 +60,17 @@ impl<T: Clone> Queue<T> {
     }
 
     pub fn enqueue(&mut self, payload: T) {
-        let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
+        let addr = kmalloc(core::mem::size_of::<T>()) as usize;
         self.list.push_back(payload, addr);
     }
 
     pub fn dequeue(&mut self) -> T {
-        return self
+        let ret = self
             .list
             .remove_at(self.list.length - 1)
             .expect("Value expected when popping");
+        kfree(ret.1);
+        ret.0
     }
 
     pub fn empty(&mut self) {
