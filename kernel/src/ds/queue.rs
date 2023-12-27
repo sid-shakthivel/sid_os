@@ -69,7 +69,7 @@ impl<T: Clone> Queue<T> {
             .list
             .remove_at(self.list.length - 1)
             .expect("Value expected when popping");
-        kfree(ret.1);
+        // kfree(ret.1);
         ret.0
     }
 

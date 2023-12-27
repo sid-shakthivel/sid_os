@@ -122,7 +122,7 @@ impl Rect {
         let x_limit = core::cmp::min(contrained_area.right, self.right);
         let y_limit = core::cmp::min(contrained_area.bottom, self.bottom);
 
-        print_serial!("{} {} {} {}\n", x_base, x_limit, y_base, y_limit);
+        // print_serial!("{} {} {} {}\n", x_base, x_limit, y_base, y_limit);
 
         for x in x_base..x_limit {
             for y in y_base..y_limit {

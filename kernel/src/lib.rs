@@ -71,32 +71,16 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
 
     let multiboot_info = multiboot2::load(multiboot_info_addr, magic);
 
-    let mut end_memory: usize = 0;
-    let mmap_tag = multiboot_info.get_memory_map_tag().expect("Expected mmap");
-    for tag in mmap_tag.get_available_mmap_entries() {
-        end_memory = tag.end_address()
-    }
-
-    PAGE_FRAME_ALLOCATOR
-        .lock()
-        .init(multiboot_info.end_address(), end_memory);
+    PAGE_FRAME_ALLOCATOR.lock().init(
+        multiboot_info.end_address(),
+        grub::get_end_of_memory(multiboot_info),
+    );
     PAGE_FRAME_ALLOCATOR.free();
 
     grub::bga_set_video_mode();
     gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
 
-    // for tag in multiboot_info.get_module_tags() {
-    //     // All modules are programs (so far)
-    //     let module_addr = tag.mod_start as usize;
-    //     let module_len = (tag.mod_end - tag.mod_start) as usize;
-
-    //     PROCESS_MANAGER.lock().add_process(
-    //         multitask::ProcessPriority::High,
-    //         0,
-    //         (module_addr, module_len),
-    //     );
-    //     PROCESS_MANAGER.free();
-    // }
+    // grub::initalise_userland(multiboot_info);
 
     interrupts::init();
 
@@ -106,7 +90,7 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     interrupts::pic::PICS.lock().init();
     interrupts::pic::PICS.free();
 
-    // interrupts::enable();
+    interrupts::enable();
 
     print_serial!("Finished Execution\n");
 

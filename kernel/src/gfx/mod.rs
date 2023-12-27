@@ -1,6 +1,6 @@
 mod psf;
 mod rect;
-mod window;
+pub mod window;
 pub mod wm;
 
 use crate::gfx::window::Window;
@@ -24,20 +24,7 @@ pub fn init(fb_tag: &multiboot2::FramebufferTag) {
 
     assert!(size_in_mib == 3, "FB is not of expected size");
 
-    // let address = kmalloc(size_in_bytes) as usize;
-
-    /*
-       The PFA and the allocator manage memory
-       The allocator uses the PFA
-       Shouldn't mix the two so...
-       There is a bug but it can be fixed later
-       Without allocating another frame there will be problems as the memory list will be overwritten
-    */
-
-    let address = PAGE_FRAME_ALLOCATOR
-        .lock()
-        .alloc_page_frames(number_of_pages) as usize;
-    PAGE_FRAME_ALLOCATOR.free();
+    let address = kmalloc(size_in_bytes) as usize;
 
     // Map the address to video memory
     paging::map_pages(number_of_pages, address, fb_tag.addr as usize);
@@ -59,7 +46,8 @@ pub fn init(fb_tag: &multiboot2::FramebufferTag) {
 
     print_serial!("tackled everything thus far\n");
 
-    WM.lock().add_window(Window::new(200, 125, 300, 300));
+    WM.lock()
+        .add_window(Window::new("Terminal", 200, 125, 300, 300));
     WM.free();
 
     // WM.lock().add_window(Window::new(50, 50, 300, 200));

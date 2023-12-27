@@ -1,5 +1,5 @@
-use super::ExceptionStackFrame;
 use super::InterruptHandlerFunc;
+use super::StackFrame;
 
 pub const IDT_MAX_DESCRIPTIONS: usize = 256;
 

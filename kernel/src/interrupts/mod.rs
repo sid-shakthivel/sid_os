@@ -74,14 +74,30 @@ const EXCEPTION_MESSAGES: &'static [&'static str] = &[
 
 pub type InterruptHandlerFunc = extern "C" fn() -> !;
 
+#[derive(Debug)] 
+#[repr(C)]
+struct StackFrame {
+    rip: usize,
+    cs: usize,
+    rflags: usize,
+    rsp: usize,
+    ss: usize,
+}
+
 #[derive(Debug)]
 #[repr(C)]
-struct ExceptionStackFrame {
-    rip: u64,
-    cs: u64,
-    rflags: u64,
-    rsp: u64,
-    ss: u64,
+pub struct InterruptStackFrame {
+    pub rdi: usize,
+    pub rsi: usize,
+    pub rdx: usize,
+    pub rcx: usize,
+    pub rbx: usize,
+    pub rax: usize,
+    rip: usize,
+    cs: usize,
+    rflags: usize,
+    rsp: usize,
+    ss: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -112,7 +128,7 @@ impl PageFaultFlags {
     }
 }
 
-pub extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception_id: usize) {
+pub extern "C" fn exception_handler(stack_frame: &StackFrame, exception_id: usize) {
     match exception_id {
         0..32 => {
             print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
@@ -123,7 +139,7 @@ pub extern "C" fn exception_handler(stack_frame: &ExceptionStackFrame, exception
     print_serial!("{:?}\n", stack_frame);
 }
 
-pub extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame, interrupt_id: usize) {
+pub extern "C" fn interrupt_handler(stack_frame: &StackFrame, interrupt_id: usize) {
     match interrupt_id {
         0x21 => {
             KEYBOARD.lock().handle_keyboard();
@@ -146,7 +162,7 @@ pub extern "C" fn interrupt_handler(stack_frame: &ExceptionStackFrame, interrupt
 }
 
 pub extern "C" fn exception_with_error_handler(
-    stack_frame: &ExceptionStackFrame,
+    stack_frame: &StackFrame,
     exception_id: usize,
     error_code: usize,
 ) {

@@ -14,7 +14,7 @@ impl<T: Clone> Stack<T> {
     // Remove from top of list
     pub fn pop(&mut self) -> T {
         let ret = self.list.remove_at(0).expect("Value expected when popping");
-        kfree(ret.1);
+        // kfree(ret.1);
         ret.0
     }
 

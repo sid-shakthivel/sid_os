@@ -18,6 +18,7 @@ use crate::utils::spinlock::Lock;
 use crate::CONSOLE;
 
 mod elf;
+pub mod syscalls;
 
 // The entrypoint for each user mode process
 pub static USER_PROCESS_START_ADDRESS: usize = 0x8000000;

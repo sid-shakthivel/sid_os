@@ -6,7 +6,12 @@
     Includes changing screen resolution, dit depth | Latest version is 0xB0C5
 */
 
-use super::ports::{inpw, outpw};
+use crate::multitask::{self, PROCESS_MANAGER};
+
+use super::{
+    multiboot2::MultibootBootInfo,
+    ports::{inpw, outpw},
+};
 
 const VBE_DISPI_IOPORT_INDEX: u16 = 0x01CE;
 const VBE_DISPI_IOPORT_DATA: u16 = 0x01CF;
@@ -21,6 +26,30 @@ const VBE_DISPI_INDEX_VIRT_HEIGHT: u16 = 7;
 const VBE_DISPI_INDEX_X_OFFSET: u16 = 8;
 const VBE_DISPI_INDEX_Y_OFFSET: u16 = 9;
 const VBE_DISPI_LFB_ENABLED: u16 = 0x40;
+
+pub fn initalise_userland(multiboot_info: &MultibootBootInfo) {
+    for tag in multiboot_info.get_module_tags() {
+        // All modules are programs (so far)
+        let module_addr = tag.mod_start as usize;
+        let module_len = (tag.mod_end - tag.mod_start) as usize;
+
+        PROCESS_MANAGER.lock().add_process(
+            multitask::ProcessPriority::High,
+            0,
+            (module_addr, module_len),
+        );
+        PROCESS_MANAGER.free();
+    }
+}
+
+pub fn get_end_of_memory(multiboot_info: &MultibootBootInfo) -> usize {
+    let mut end_memory: usize = 0;
+    let mmap_tag = multiboot_info.get_memory_map_tag().expect("Expected mmap");
+    for tag in mmap_tag.get_available_mmap_entries() {
+        end_memory = tag.end_address()
+    }
+    end_memory
+}
 
 pub fn bga_set_video_mode() {
     if !is_bga_available() {

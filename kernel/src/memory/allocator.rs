@@ -66,11 +66,11 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
                 let mut address_of_node = get_base_address(memory_block.data);
 
                 // Zero the entirety of the data
-                for i in 0..(memory_block.size / 8) {
-                    unsafe {
-                        *address_of_node.offset(i as isize) = 0;
-                    }
-                }
+                // for i in 0..(memory_block.size / 8) {
+                //     unsafe {
+                //         *address_of_node.offset(i as isize) = 0;
+                //     }
+                // }
 
                 let header = unsafe { &mut *(address_of_header as *mut MemoryBlock) };
 
@@ -129,11 +129,11 @@ pub fn kfree(dp: *mut usize) {
     let size_in_u64 = header.size / 8;
 
     // Need to zero the data for safety
-    for i in 0..NODE_MEMORY_BLOCK_SIZE {
-        unsafe {
-            *node_address.offset(i as isize) = 0;
-        }
-    }
+    // for i in 0..NODE_MEMORY_BLOCK_SIZE {
+    //     unsafe {
+    //         *node_address.offset(i as isize) = 0;
+    //     }
+    // }
 
     // Add block to list of free blocks (to the front)
     FREE_MEMORY_BLOCK_LIST
