@@ -29,31 +29,21 @@ pub fn init(fb_tag: &multiboot2::FramebufferTag) {
     // Map the address to video memory
     paging::map_pages(number_of_pages, address, fb_tag.addr as usize);
 
-    // for y in 0..fb_tag.height {
-    //     for x in 0..fb_tag.width {
-    //         let offset = ((address as u32) + (y * 4096) + ((x * 32) / 8)) as *mut u32;
-    //         unsafe {
-    //             *offset = 0x3499fe;
-    //         }
-    //     }
-    // }
-
     WM.lock().set_fb_address(address);
     WM.free();
 
     WM.lock().set_font();
     WM.free();
 
-    print_serial!("tackled everything thus far\n");
-
     WM.lock()
-        .add_window(Window::new("Terminal", 200, 125, 300, 300));
+        .add_window(Window::new("Terminal", 100, 100, 300, 300));
     WM.free();
 
-    // WM.lock().add_window(Window::new(50, 50, 300, 200));
+    // WM.lock().add_window(Window::new("Paint", 50, 50, 300, 200));
     // WM.free();
 
-    // WM.lock().add_window(Window::new(25, 25, 100, 100));
+    // WM.lock()
+    //     .add_window(Window::new("Text-edit", 500, 400, 400, 300));
     // WM.free();
 
     WM.lock().paint();

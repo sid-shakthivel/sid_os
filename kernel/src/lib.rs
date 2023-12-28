@@ -48,7 +48,7 @@ fn on_complete(mouse_state: MouseState) {
     use crate::gfx::wm::WM;
 
     WM.lock().handle_mouse_event(
-        (mouse_state.get_y() * -1, mouse_state.get_x()),
+        (mouse_state.get_x(), mouse_state.get_y() * -1),
         mouse_state.left_button_down(),
     );
     WM.free();

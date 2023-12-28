@@ -58,6 +58,10 @@ impl<T: Clone> List<T> {
 
         self.head = Some(new_node);
 
+        if self.length == 0 {
+            self.tail = Some(new_node);
+        }
+
         self.length += 1;
     }
 
@@ -93,7 +97,11 @@ impl<T: Clone> List<T> {
 
         // print_serial!("Removing at index {}\n", index);
 
-        let length = self.length;
+        let length = self.length - 1;
+
+        // if index == length {
+        //     print_serial!("hey hey hey\n");
+        // }
 
         match index {
             0 => unsafe {

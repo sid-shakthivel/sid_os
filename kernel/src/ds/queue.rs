@@ -2,6 +2,7 @@ use super::list::{List, ListIntoIterator, ListNode};
 use crate::memory::{
     allocator::{kfree, kmalloc},
     page_frame_allocator::PAGE_FRAME_ALLOCATOR,
+    paging::PAGE_SIZE,
 };
 
 // A wrapper to add priority to any type
@@ -60,7 +61,9 @@ impl<T: Clone> Queue<T> {
     }
 
     pub fn enqueue(&mut self, payload: T) {
-        let addr = kmalloc(core::mem::size_of::<T>()) as usize;
+        // let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
+        let addr = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap() as usize;
+        PAGE_FRAME_ALLOCATOR.free();
         self.list.push_back(payload, addr);
     }
 

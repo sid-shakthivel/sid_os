@@ -62,17 +62,15 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
                 FREE_MEMORY_BLOCK_LIST.free();
 
                 // Create new memory block for malloc'd memory
-                let mut address_of_header = get_header_address(memory_block.data);
+                // let address_of_header = get_header_address(memory_block.data);
                 let mut address_of_node = get_base_address(memory_block.data);
 
                 // Zero the entirety of the data
-                // for i in 0..(memory_block.size / 8) {
-                //     unsafe {
-                //         *address_of_node.offset(i as isize) = 0;
-                //     }
-                // }
-
-                let header = unsafe { &mut *(address_of_header as *mut MemoryBlock) };
+                for i in 0..(memory_block.size / 8) {
+                    unsafe {
+                        *address_of_node.offset(i as isize) = 0;
+                    }
+                }
 
                 // Adjust size correctly for correct offset
                 let size_in_u64 = size / 8;
@@ -88,6 +86,9 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
                 return dp;
             } else {
                 // TODO: Check this soon
+
+                panic!("should not be here");
+
                 FREE_MEMORY_BLOCK_LIST.lock().remove_at(index);
                 FREE_MEMORY_BLOCK_LIST.free();
 
@@ -173,7 +174,7 @@ fn align(size: usize) -> usize {
 */
 fn find_first_fit(size: usize) -> (usize, Option<MemoryBlock>) {
     for (i, memory_block) in FREE_MEMORY_BLOCK_LIST.lock().into_iter().enumerate() {
-        if memory_block.unwrap().payload.size >= size {
+        if memory_block.unwrap().payload.size > size {
             FREE_MEMORY_BLOCK_LIST.free();
             return (i as usize, Some(memory_block.unwrap().payload.clone()));
         }
