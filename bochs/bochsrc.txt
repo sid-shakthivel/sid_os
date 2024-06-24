@@ -1,7 +1,7 @@
     megs:            128
     display_library: sdl2
-    romimage:        file=/usr/local/Cellar/bochs/2.7/share/bochs/BIOS-bochs-latest
-    vgaromimage:     file=/usr/local/Cellar/bochs/2.7/share/bochs/VGABIOS-lgpl-latest
+    romimage:        file=/usr/local/Cellar/bochs/2.8/share/bochs/BIOS-bochs-latest
+    vgaromimage:     file=/usr/local/Cellar/bochs/2.8/share/bochs/VGABIOS-lgpl-latest
     vga: extension=vbe
     ata0-master:     type=cdrom, path=sid_os.iso, status=inserted
     boot:            cdrom

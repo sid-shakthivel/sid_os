@@ -11,4 +11,9 @@
         "./kernel/Cargo.toml",
         "./kernel/Cargo.toml"
     ],
+    "files.associations": {
+        "*.s": "c",
+        "syscalls.h": "c",
+        "stdio.h": "c"
+    },
 }

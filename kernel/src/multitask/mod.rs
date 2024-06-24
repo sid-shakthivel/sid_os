@@ -67,6 +67,9 @@ impl ProcessManager {
     }
 
     pub fn switch_process(&mut self, old_rsp: usize) -> usize {
+        // print_serial!("Switch\n");
+        // print_serial!("OLD RSP: 0x{:x}\n", old_rsp);
+
         // Must save
         let current_process = self.tasks.get_head();
 
@@ -74,7 +77,9 @@ impl ProcessManager {
             self.is_from_kernel = false;
             self.kernel_address = old_rsp;
         } else {
+            // print_serial!("Old RSP: 0x{:x}\n", current_process.rsp as usize);
             current_process.rsp = (old_rsp) as *const usize;
+            // print_serial!("New RSP: 0x{:x}\n", current_process.rsp as usize);
         }
 
         let new_rsp = current_process.rsp;
@@ -102,22 +107,28 @@ impl ProcessPriority {
 impl Process {
     pub fn init(priority: ProcessPriority, pid: usize, multiboot_data: (usize, usize)) -> Process {
         // Allocate a page of memory for the stack
-        let mut rsp: *mut usize = kmalloc(paging::PAGE_SIZE);
+        // let mut rsp: *mut usize = kmalloc(paging::PAGE_SIZE);
+        let mut rsp = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap();
+        PAGE_FRAME_ALLOCATOR.free();
 
         elf::parse(multiboot_data.0);
 
+        print_serial!("Parsed successfully\n");
+
         unsafe {
-            rsp = rsp.offset(4095);
+            rsp = rsp.offset(511);
             let stack_top: usize = rsp as usize;
 
             /*
                When interrupt is called the following registers are pushed as follows: SS -> RSP -> RFLAGS -> CS -> RIP
                These registers are then pushed: RAX -> RBX -> RBC -> RDX -> RSI -> RDI -> R8..R15
             */
-            *rsp.offset(-1) = 0x20 | 0x3; // SS
+            // *rsp.offset(-1) = 0x20 | 0x3; // SS
+            *rsp.offset(-1) = 0x10; // SS
             *rsp.offset(-2) = stack_top; // RSP
             *rsp.offset(-3) = 0x202; // RFLAGS which enable interrupts
-            *rsp.offset(-4) = 0x18 | 0x3; // CS
+                                     // *rsp.offset(-4) = 0x18 | 0x3; // CS
+            *rsp.offset(-4) = 0x08; // CS
             *rsp.offset(-5) = USER_PROCESS_START_ADDRESS; // RIP
             *rsp.offset(-6) = 0x00; // RAX
             *rsp.offset(-7) = 0x00; // RBX
@@ -136,6 +147,8 @@ impl Process {
             *rsp.offset(-20) = 0; // R15
                                   // *rsp.offset(-21) = new_p4 as u64; // CR3
             rsp = rsp.offset(-20);
+
+            print_serial!("The stack pointer is 0x{:x}\n", rsp as usize);
         }
 
         Process {

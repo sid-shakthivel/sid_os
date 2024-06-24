@@ -4,9 +4,12 @@
     They are invoked with software interrupts and the design is inspired by postfix
 */
 
+use core::panic;
+
 use crate::gfx::window::Window;
 use crate::gfx::wm::WM;
 use crate::interrupts::InterruptStackFrame;
+use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::print_serial;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -19,14 +22,43 @@ pub struct CondensedWindow {
     name: *const u8,
 }
 
-pub fn syscall_handler(registers: InterruptStackFrame) -> i64 {
+pub fn syscall_handler(registers: &InterruptStackFrame) -> i64 {
+    // unsafe {
+    //     print_serial!("0x{:x}\n", registers.rax);
+    //     print_serial!("0x{:x}\n", registers.rbx);
+    //     print_serial!("0x{:x}\n", registers.rcx);
+    //     print_serial!("0x{:x}\n", registers.rdx);
+    // }
+
     let syscall_id = registers.rax;
 
+    // print_serial!("syscall id {0}\n", syscall_id);
+
     return match syscall_id {
+        4 => isatty(registers.rbx),
+        8 => allocate_pages(registers.rbx),
         9 => write(registers.rbx, registers.rcx as *mut u8, registers.rdx),
         11 => create_window(registers.rbx as *const CondensedWindow),
-        _ => panic!("Unknown syscall {}\n", syscall_id),
+        _ => {
+            print_serial!("Unknown syscall? {}\n", syscall_id);
+            return 0;
+        }
     };
+}
+
+fn isatty(file: usize) -> i64 {
+    if file == 0 || file == 1 || file == 2 {
+        return 1;
+    }
+    return -1;
+}
+
+fn allocate_pages(pages_required: usize) -> i64 {
+    let address = PAGE_FRAME_ALLOCATOR
+        .lock()
+        .alloc_page_frames(pages_required);
+    PAGE_FRAME_ALLOCATOR.free();
+    address as i64
 }
 
 /*
@@ -37,7 +69,7 @@ fn write(file: usize, buffer: *mut u8, length: usize) -> i64 {
     if length == 0 {
         return 0;
     }
-    
+
     if length > usize::max_value() {
         return -1;
     }

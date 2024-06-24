@@ -150,6 +150,10 @@ pub struct MmapEntry {
 }
 
 impl MmapEntry {
+    pub fn start_address(&self) -> usize {
+        self.addr as usize
+    }
+
     pub fn end_address(&self) -> usize {
         (self.addr + self.len) as usize
     }

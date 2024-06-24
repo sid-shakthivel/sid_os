@@ -6,10 +6,13 @@ Interrupts are a more efficient solution than polling devices
 An interrupt descriptor table defines what each interrupt will do (First 32 Exceptions)
 */
 
+use isr::setup_syscall_handler;
+
 use self::pic::PicFunctions;
 use self::pic::PICS;
 use crate::dev::keyboard::KEYBOARD;
 use crate::dev::mouse::MOUSE;
+use crate::ds::stack;
 #[warn(unused_assignments)]
 use crate::interrupts::idt::GateType;
 use crate::interrupts::idt::IDTEntry;
@@ -18,6 +21,7 @@ use crate::interrupts::idt::IDT;
 use crate::interrupts::idt::IDTR;
 use crate::interrupts::idt::IDT_MAX_DESCRIPTIONS;
 use crate::memory::gdt::TSS;
+use crate::multitask::syscalls::syscall_handler;
 use crate::multitask::ProcessManager;
 use crate::multitask::PROCESS_MANAGER;
 use crate::print_serial;
@@ -27,6 +31,7 @@ use crate::utils::multiboot2::MULTIBOOT2_BOOTLOADER_MAGIC;
 use crate::utils::ports::inb;
 use crate::CONSOLE;
 use core::arch::asm;
+use core::panic;
 
 use crate::interrupts::isr::setup_pit_handler;
 
@@ -74,7 +79,7 @@ const EXCEPTION_MESSAGES: &'static [&'static str] = &[
 
 pub type InterruptHandlerFunc = extern "C" fn() -> !;
 
-#[derive(Debug)] 
+#[derive(Debug)]
 #[repr(C)]
 struct StackFrame {
     rip: usize,
@@ -87,8 +92,9 @@ struct StackFrame {
 #[derive(Debug)]
 #[repr(C)]
 pub struct InterruptStackFrame {
-    pub rdi: usize,
     pub rsi: usize,
+    pub rdi: usize,
+    pub rbp: usize,
     pub rdx: usize,
     pub rcx: usize,
     pub rbx: usize,
@@ -137,9 +143,15 @@ pub extern "C" fn exception_handler(stack_frame: &StackFrame, exception_id: usiz
     }
 
     print_serial!("{:?}\n", stack_frame);
+
+    panic!("");
 }
 
-pub extern "C" fn interrupt_handler(stack_frame: &StackFrame, interrupt_id: usize) {
+pub extern "C" fn test_syscall_handler(stack_frame: &InterruptStackFrame) -> isize {
+    syscall_handler(stack_frame) as isize
+}
+
+pub extern "C" fn interrupt_handler(stack_frame: &InterruptStackFrame, interrupt_id: usize) {
     match interrupt_id {
         0x21 => {
             KEYBOARD.lock().handle_keyboard();
@@ -153,6 +165,9 @@ pub extern "C" fn interrupt_handler(stack_frame: &StackFrame, interrupt_id: usiz
 
             let packet = inb(0x60);
             MOUSE2.lock().process_packet(packet);
+        }
+        0x80 => {
+            syscall_handler(stack_frame);
         }
         _ => {}
     }
@@ -182,6 +197,8 @@ pub extern "C" fn exception_with_error_handler(
 
     print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
     print_serial!("{:?}\n", stack_frame);
+
+    panic!("");
 
     loop {}
 }
@@ -243,6 +260,7 @@ pub fn init() {
             IDTEntry::new_default_interrupt(setup_interrupt_handler!(interrupt_handler, 0x2c)); // Mouse
 
         // Syscalls
+        IDT[0x80] = IDTEntry::new_default_interrupt(setup_syscall_handler);
 
         // Actually set the IDTR values
         let idt_address = (&IDT[0] as *const IDTEntry) as u64;

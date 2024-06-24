@@ -22,8 +22,7 @@ use crate::memory::allocator::kmalloc;
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::memory::{page_frame_allocator, paging};
 use crate::{print_serial, CONSOLE};
-use core::future::pending;
-use core::{mem, num};
+use core::{mem, num, panic};
 
 type Elf64Half = u16;
 type Elf64Off = usize;
@@ -172,7 +171,6 @@ fn parse_program_headers(file_start: usize, elf_header: &ElfHeader) {
         match program_header.p_type {
             1 => {
                 // LOAD
-                // TODO: With multiple program headers may need to mulitply by i
                 let source = file_start + program_header.p_offset as usize;
                 load_segment_into_memory(
                     source,
@@ -200,15 +198,20 @@ fn load_segment_into_memory(
         .lock()
         .alloc_page_frames(number_of_pages);
     PAGE_FRAME_ALLOCATOR.free();
-    let source = source_raw as *mut usize;
 
     unsafe {
         core::ptr::write_bytes(dest as *mut u8, 0, memsz as usize);
-        core::ptr::copy_nonoverlapping(source as *mut u8, dest as *mut u8, filesz as usize);
+        core::ptr::copy_nonoverlapping(source_raw as *mut u8, dest as *mut u8, filesz as usize);
     }
 
     // Map the physical pages to the virtual address provided
-    // paging::map_pages(number_of_pages, dest as usize, v_address);
+    print_serial!(
+        "0x{:x} 0x{:x} pages: {}\n",
+        v_address,
+        dest as usize,
+        number_of_pages
+    );
+
     paging::map_pages(number_of_pages, v_address, dest as usize);
 
     v_address + (rounded_size)

@@ -6,7 +6,12 @@
     Includes changing screen resolution, dit depth | Latest version is 0xB0C5
 */
 
-use crate::multitask::{self, PROCESS_MANAGER};
+use core::panic;
+
+use crate::{
+    multitask::{self, PROCESS_MANAGER},
+    print_serial,
+};
 
 use super::{
     multiboot2::MultibootBootInfo,
@@ -32,6 +37,12 @@ pub fn initalise_userland(multiboot_info: &MultibootBootInfo) {
         // All modules are programs (so far)
         let module_addr = tag.mod_start as usize;
         let module_len = (tag.mod_end - tag.mod_start) as usize;
+
+        print_serial!(
+            "This is the module start address 0x{:x} and 0x{:x}\n",
+            module_addr,
+            module_len
+        );
 
         PROCESS_MANAGER.lock().add_process(
             multitask::ProcessPriority::High,

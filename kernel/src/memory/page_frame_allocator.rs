@@ -44,8 +44,8 @@ impl PageFrameAllocator {
     }
 
     pub fn init(&mut self, mut memory_start: usize, mut memory_end: usize) {
-        // TODO: Fix this because literally adding a page purely for safety
         memory_start = round_to_nearest_page(memory_start) + 0x1000;
+        memory_start = 0xf50000;
         memory_end = round_to_nearest_page(memory_end);
 
         self.memory_start = memory_start + (paging::PAGE_SIZE * 2);
@@ -60,33 +60,48 @@ impl PageFrameAllocator {
        Else return the address of the current page and increment
     */
     pub fn alloc_page_frame(&mut self) -> Option<*mut usize> {
-        if self
-            .free_page_frames
-            .as_mut()
-            .expect("Shouldn't be none")
-            .is_empty()
-        {
-            // Check if over memory limit
-            let address = self.current_page;
+        // if self
+        //     .free_page_frames
+        //     .as_mut()
+        //     .expect("Shouldn't be none")
+        //     .is_empty()
+        // {
+        //     // Check if over memory limit
+        //     let address = self.current_page;
 
-            if address > self.memory_end {
-                return None;
-            } else {
-                self.current_page += paging::PAGE_SIZE;
-                return Some(self.current_page as *mut usize);
-            }
+        //     if address > self.memory_end {
+        //         print_serial!("how are we over the limit?\n");
+        //         return None;
+        //     } else {
+        //         self.current_page += paging::PAGE_SIZE;
+        //         return Some(self.current_page as *mut usize);
+        //     }
+        // } else {
+        //     match self
+        //         .free_page_frames
+        //         .as_mut()
+        //         .expect("Shouldn't be none")
+        //         .pop()
+        //     {
+        //         Some(page_frame) => unsafe {
+        //             return Some((*page_frame).get_address() as *mut usize);
+        //         },
+        //         None => {
+        //             print_serial!("yo\n");
+        //             None
+        //         }
+        //     }
+        // }
+
+        // Check if over memory limit
+        let address = self.current_page;
+
+        if address > self.memory_end {
+            print_serial!("how are we over the limit?\n");
+            return None;
         } else {
-            match self
-                .free_page_frames
-                .as_mut()
-                .expect("Shouldn't be none")
-                .pop()
-            {
-                Some(page_frame) => unsafe {
-                    return Some((*page_frame).get_address() as *mut usize);
-                },
-                None => None,
-            }
+            self.current_page += paging::PAGE_SIZE;
+            return Some(self.current_page as *mut usize);
         }
     }
 
@@ -112,7 +127,7 @@ impl PageFrameAllocator {
 
     // Allocates a continuous amount of pages subsequently
     pub fn alloc_page_frames(&mut self, pages_required: usize) -> *mut usize {
-        let address = self.current_page;
+        let address = self.current_page + paging::PAGE_SIZE;
         for _i in 0..pages_required {
             self.current_page += paging::PAGE_SIZE;
         }
@@ -134,6 +149,7 @@ impl FreeStack {
     }
 
     pub fn is_empty(&self) -> bool {
+        // print_serial!("the length is {}\n", self.length);
         return self.length == 0;
     }
 

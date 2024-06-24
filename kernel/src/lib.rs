@@ -77,10 +77,20 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     );
     PAGE_FRAME_ALLOCATOR.free();
 
-    grub::bga_set_video_mode();
-    gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
+    print_serial!(
+        "This is the multiboot end address 0x{:x}\n",
+        multiboot_info.start_address()
+    );
 
-    // grub::initalise_userland(multiboot_info);
+    print_serial!(
+        "This is the multiboot end address 0x{:x}\n",
+        multiboot_info.end_address()
+    );
+
+    grub::bga_set_video_mode();
+    // gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
+
+    grub::initalise_userland(multiboot_info);
 
     interrupts::init();
 

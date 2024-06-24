@@ -61,19 +61,21 @@ impl Page {
     pub fn new(p_addr: usize, flags: &[PageFlags]) -> Page {
         let mut entry_data: usize = (0x000fffff_fffff000 & p_addr);
 
-        for flag in flags {
-            entry_data = match flag {
-                PageFlags::Present => (1 << 0) | entry_data,
-                PageFlags::Writable => (1 << 1) | entry_data,
-                PageFlags::UserAccessible => (1 << 2) | entry_data,
-                PageFlags::WriteThrough => (1 << 3) | entry_data,
-                PageFlags::DisableCache => (1 << 4) | entry_data,
-                PageFlags::Dirty => (1 << 6) | entry_data,
-                PageFlags::Huge => (1 << 7) | entry_data,
-                PageFlags::Global => (1 << 8) | entry_data,
-                _ => entry_data,
-            };
-        }
+        // for flag in flags {
+        //     entry_data = match flag {
+        //         PageFlags::Present => (1 << 0) | entry_data,
+        //         PageFlags::Writable => (1 << 1) | entry_data,
+        //         PageFlags::UserAccessible => (1 << 2) | entry_data,
+        //         PageFlags::WriteThrough => (1 << 3) | entry_data,
+        //         PageFlags::DisableCache => (1 << 4) | entry_data,
+        //         PageFlags::Dirty => (1 << 6) | entry_data,
+        //         PageFlags::Huge => (1 << 7) | entry_data,
+        //         PageFlags::Global => (1 << 8) | entry_data,
+        //         _ => entry_data,
+        //     };
+        // }
+
+        entry_data = entry_data | 0b111;
 
         Page(entry_data)
     }
@@ -181,8 +183,13 @@ pub fn map_pages(number_of_pages: usize, v_addr: usize, p_addr: usize) {
     }
 }
 
-pub fn map_page(p_addr: usize, v_addr: usize, is_user: bool) {
-    map_pages(1, v_addr, p_addr);
+pub fn map_page(v_addr: usize, p_addr: usize, is_user: bool) {
+    // map_pages(1, v_addr, p_addr);
+
+    unsafe {
+        (*P4).map(v_addr, p_addr);
+        flush_tlb();
+    }
 }
 
 extern "C" {

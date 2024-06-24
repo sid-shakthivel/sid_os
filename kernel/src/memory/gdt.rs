@@ -208,7 +208,7 @@ impl GDTBits {
                 GDTBits::IsWriteable => value | (1 << 41),
                 GDTBits::IsExecutable => value | (1 << 43), // If 1 => code
                 GDTBits::IsCodeOrData => value | (1 << 44), // If 1 => data
-                GDTBits::IsUserPage => value | (3 << 45),   // If 3 => user
+                GDTBits::IsUserPage => value | (1 << 45) | (1 << 46), // If 3 => user
                 GDTBits::IsPresent => value | (1 << 47),    // If 1 => valid segment
                 GDTBits::Is64Bit => value | (1 << 53),
             };

@@ -1,7 +1,7 @@
 KERNEL = $(shell pwd)/kernel
 USERLAND_MODULE_1 = $(shell pwd)/userland/static
 PROJECT_PATH = $(shell pwd)
-# SYSCALLS = $(shell pwd)/userland/syscalls
+SYSCALLS = $(shell pwd)/userland/syscalls
 
 run-qemu: all
 	qemu-system-x86_64 -accel hvf -serial stdio -cdrom sid_os.iso
@@ -18,7 +18,7 @@ all:
 	# cd $(SYSCALLS) && make
 
 	# Userspace modules
-	# cd $(USERLAND_MODULE_1) && make
+	cd $(USERLAND_MODULE_1) && make
 	# docker run --rm -v $(PROJECT_PATH):/code sid_os/toolchain bash -c "cd code/userland/static && make all"
 
 	# Kernel

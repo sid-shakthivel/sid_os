@@ -1,6 +1,9 @@
 // Define all base isr's
 
-use super::{exception_handler, exception_with_error_handler, interrupt_handler, pit_handler};
+use super::{
+    exception_handler, exception_with_error_handler, interrupt_handler, pit_handler,
+    test_syscall_handler,
+};
 use core::arch::asm;
 
 // Purely for exceptions with an error code eg page faults
@@ -23,6 +26,7 @@ macro_rules! setup_exception_with_e_handler {
                     "mov rsi, {0}", // Load exception id
                     "add rdi, 7*8",
                     "sub rsp, 8", // Allign stack pointer
+                    "cld",
                     "call {1}",
                     "add rsp, 8", // Reallign stack pointer
                     "pop rsi",
@@ -60,7 +64,7 @@ macro_rules! setup_interrupt_handler {
                     "push rsi",
                     "mov rdi, rsp",
                     "mov rsi, {0}",
-                    "add rdi, 7*8",
+                    "cld",
                     "call {1}",
                     "pop rsi",
                     "pop rdi",
@@ -101,8 +105,9 @@ pub extern "C" fn setup_pit_handler() -> ! {
             "push r14",
             "push r15",
             "mov rdi, rsp",
-            "xchg bx, bx",
+            "cld",
             "call {0}",
+            "xchg bx, bx",
             "mov rsp, rax",
             "pop r15",
             "pop r14",
@@ -121,6 +126,54 @@ pub extern "C" fn setup_pit_handler() -> ! {
             "pop rax",
             "iretq",
             sym pit_handler,
+            options(noreturn)
+        );
+    }
+}
+
+/*
+    Very similar to handling a regular interrupt but preserve the return value
+*/
+#[naked]
+pub extern "C" fn setup_syscall_handler() -> ! {
+    unsafe {
+        asm!(
+            "push rax",
+            "push rbx",
+            "push rcx",
+            "push rdx",
+            "push rbp",
+            "push rdi",
+            "push rsi",
+            "push r8",
+            "push r9",
+            "push r10",
+            "push r11",
+            "push r12",
+            "push r13",
+            "push r14",
+            "push r15",
+            "mov rdi, rsp",
+            "add rdi, 8*8",
+            "cld",
+            "call {0}",
+            "pop r15",
+            "pop r14",
+            "pop r13",
+            "pop r12",
+            "pop r11",
+            "pop r10",
+            "pop r9",
+            "pop r8",
+            "pop rsi",
+            "pop rdi",
+            "pop rbp",
+            "pop rdx",
+            "pop rcx",
+            "pop rbx",
+            "add rsp, 0x08",
+            "iretq",
+            sym test_syscall_handler,
             options(noreturn)
         );
     }

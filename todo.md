@@ -2,11 +2,17 @@ Remember:
 - Bochs breakpoint is xchg bx, bx
 - info tab specifies v_addr then p_addr
 
+Now:
+- When handling syscall need to properly return variables cause allocation
+- The allocator is still broken
+- Need to save the rsp properly thats the issue
+
 Refactoring
 - PS2 Mouse Things
 - Separate out the bitwise into a separate file (do once fix ps2)
 - Window manager stuff
 - Make a trait for paint etc
+- Want to switch to a userspace window manager
 
 Bugs:
 - Dirty rects doesn't work anymore whatsoever
@@ -25,10 +31,6 @@ Later:
 - Add font to makefile
 - Add more comments everywhere
 
-Trying to fix the bug:
-Paging is correct
-It's the allocator thats the problem as switching to PFA fixes the bugs
-
 Useful articles:
 http://www.jamesmolloy.co.uk/tutorial_html/9.-Multitasking.html
 http://www.brokenthorn.com/Resources/OSDev25.html
@@ -36,3 +38,10 @@ https://is.muni.cz/el/fi/jaro2018/PB173/um/05_writing_a_very_small_os_kernel/osd
 http://dmitrysoshnikov.com/compilers/writing-a-memory-allocator/
 https://wiki.osdev.org/Brendan%27s_Multi-tasking_Tutorial
 https://jmarlin.github.io/wsbe/
+
+Current Tabs:
+https://jmarlin.github.io/wsbe/
+https://github.com/sid-shakthivel/sid_os/blob/6ccee810148848dfd6251a2f2ff59912bd23eac8/kernel/src/gfx/rect.rs
+https://github.com/rust-osdev/ps2-mouse/blob/master/src/lib.rs
+https://jmnl.xyz/window-manager/
+https://github.com/sid-shakthivel/os64/blob/3b90c4e56d66eef83713607586449404adbbd5d0/kernel/src/page_frame_allocator.rs
