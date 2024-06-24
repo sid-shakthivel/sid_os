@@ -9,7 +9,6 @@ Remember:
 
 Now:
 - The allocator may still be slightly broken
-- Clone directories properly and test with another process
 - Allow for both kernel and user tasks (basic abstraction)
 
 Refactoring

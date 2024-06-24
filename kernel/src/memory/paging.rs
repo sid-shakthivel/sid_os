@@ -40,6 +40,12 @@ enum PageFlags {
     Global,
 }
 
+const FLAGS: [PageFlags; 3] = [
+    PageFlags::Present,
+    PageFlags::Writable,
+    PageFlags::UserAccessible,
+];
+
 #[repr(C)]
 struct Page(usize);
 
@@ -61,21 +67,19 @@ impl Page {
     pub fn new(p_addr: usize, flags: &[PageFlags]) -> Page {
         let mut entry_data: usize = (0x000fffff_fffff000 & p_addr);
 
-        // for flag in flags {
-        //     entry_data = match flag {
-        //         PageFlags::Present => (1 << 0) | entry_data,
-        //         PageFlags::Writable => (1 << 1) | entry_data,
-        //         PageFlags::UserAccessible => (1 << 2) | entry_data,
-        //         PageFlags::WriteThrough => (1 << 3) | entry_data,
-        //         PageFlags::DisableCache => (1 << 4) | entry_data,
-        //         PageFlags::Dirty => (1 << 6) | entry_data,
-        //         PageFlags::Huge => (1 << 7) | entry_data,
-        //         PageFlags::Global => (1 << 8) | entry_data,
-        //         _ => entry_data,
-        //     };
-        // }
-
-        entry_data = entry_data | 0b111;
+        for flag in flags {
+            entry_data = match flag {
+                PageFlags::Present => (1 << 0) | entry_data,
+                PageFlags::Writable => (1 << 1) | entry_data,
+                PageFlags::UserAccessible => (1 << 2) | entry_data,
+                PageFlags::WriteThrough => (1 << 3) | entry_data,
+                PageFlags::DisableCache => (1 << 4) | entry_data,
+                PageFlags::Dirty => (1 << 6) | entry_data,
+                PageFlags::Huge => (1 << 7) | entry_data,
+                PageFlags::Global => (1 << 8) | entry_data,
+                _ => entry_data,
+            };
+        }
 
         Page(entry_data)
     }
@@ -88,17 +92,10 @@ impl Page {
 impl PageTable {
     // Map a virtual address to a physical address
     fn map_recursive(&mut self, v_addr: usize, p_addr: usize, level: usize) {
-        // Set default flags for all
-        let flags = [
-            PageFlags::Present,
-            PageFlags::Writable,
-            PageFlags::UserAccessible,
-        ];
-
         if level == 0 {
             // Base case: Map the virtual address to the physical address in the P1 table
-            let p1_index = (v_addr >> 12) & 0x1ff;
-            self.entries[p1_index] = Page::new(p_addr, &flags);
+            let p1_index = (v_addr >> 12) & 0x1FF;
+            self.entries[p1_index] = Page::new(p_addr, &FLAGS);
         } else {
             let index = (v_addr >> (level * 9 + 12)) & 0x1FF;
 
@@ -112,13 +109,59 @@ impl PageTable {
 
                 // let pf_addr: usize = kmalloc(super::paging::PAGE_SIZE) as usize;
 
-                self.entries[index] = Page::new(pf_addr, &flags)
+                self.entries[index] = Page::new(pf_addr, &FLAGS)
             }
 
             let next_level_table =
                 unsafe { &mut *((self.entries[index].0 & 0xFFFF_FFFF_F000) as *mut PageTable) };
 
             next_level_table.map_recursive(v_addr, p_addr, level - 1);
+        }
+    }
+
+    unsafe fn clone_page_table_recursive(
+        &self,
+        src_p: *mut PageTable,
+        dst_p: *mut PageTable,
+        level: usize,
+    ) {
+        match level {
+            0..3 => {
+                for i in 0..(*src_p).entries.len() {
+                    if (*src_p).entries[i].0 != 0 {
+                        let new_page_table: *mut PageTable =
+                            PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap() as *mut _;
+                        PAGE_FRAME_ALLOCATOR.free();
+
+                        let src_next_page_table =
+                            ((*src_p).entries[i].0 & 0xFFFF_FFFF_F000) as *mut PageTable;
+
+                        // Recursively clone next level
+                        self.clone_page_table_recursive(
+                            src_next_page_table,
+                            new_page_table,
+                            level + 1,
+                        );
+
+                        // Create new Page object with cloned page table address
+                        (*dst_p).entries[i] = Page::new(new_page_table as usize, &FLAGS);
+                    }
+                }
+            }
+            3 => {
+                for i in 0..(*src_p).entries.len() {
+                    if (*src_p).entries[i].0 != 0 {
+                        // Create new Page object with cloned page table address
+                        (*dst_p).entries[i] = Page::new((*src_p).entries[i].0 as usize, &FLAGS);
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        // Handle recursive mapping at the last level (PML4 self-mapping)
+        if level == 0 {
+            (*dst_p).entries[511] = Page::new(dst_p as usize, &FLAGS);
         }
     }
 
@@ -176,6 +219,20 @@ impl PageTable {
     }
 }
 
+// Creates a deep clone of the paging system
+pub fn deep_clone() -> *mut PageTable {
+    unsafe {
+        let p4 = &mut *P4;
+        let new_p4: *mut PageTable =
+            PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap() as *mut _;
+        PAGE_FRAME_ALLOCATOR.free();
+
+        p4.clone_page_table_recursive(P4, new_p4, 0);
+
+        new_p4
+    }
+}
+
 pub fn map_pages(number_of_pages: usize, v_addr: usize, p_addr: usize) {
     unsafe {
         (*P4).map_pages(number_of_pages, v_addr, p_addr);
@@ -183,13 +240,15 @@ pub fn map_pages(number_of_pages: usize, v_addr: usize, p_addr: usize) {
     }
 }
 
-pub fn map_page(v_addr: usize, p_addr: usize, is_user: bool) {
-    // map_pages(1, v_addr, p_addr);
-
+pub fn map_pages_custom_p4(number_of_pages: usize, v_addr: usize, p_addr: usize, p4: usize) {
     unsafe {
-        (*P4).map(v_addr, p_addr);
+        (*(p4 as *mut PageTable)).map_pages(number_of_pages, v_addr, p_addr);
         flush_tlb();
     }
+}
+
+pub fn map_page(v_addr: usize, p_addr: usize, is_user: bool) {
+    map_pages(1, v_addr, p_addr);
 }
 
 extern "C" {

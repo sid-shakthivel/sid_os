@@ -112,6 +112,7 @@ pub extern "C" fn setup_pit_handler() -> ! {
             "call {0}",
             "mov rsp, rax",
             "mov rax, [rsp]",
+            "mov cr3, rax",
             "add rsp, 0x08",
             "pop r15",
             "pop r14",

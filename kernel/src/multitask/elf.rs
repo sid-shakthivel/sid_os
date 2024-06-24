@@ -95,10 +95,10 @@ enum ProgramHeaderType {
     PtLoad = 1, // Loadable segment
 }
 
-pub fn parse(file_start: usize) {
+pub fn parse(file_start: usize, p4: usize) {
     let elf_header = unsafe { &*(file_start as *const ElfHeader) };
     validate_file(elf_header);
-    parse_program_headers(file_start, elf_header);
+    parse_program_headers(file_start, elf_header, p4);
 }
 
 // Verify file starts with ELF Magic number and is built for the correct system
@@ -156,7 +156,7 @@ fn validate_file(elf_header: &ElfHeader) -> bool {
     Segments which contain multiple sections
     These are utilised whilst executing
 */
-fn parse_program_headers(file_start: usize, elf_header: &ElfHeader) {
+fn parse_program_headers(file_start: usize, elf_header: &ElfHeader, p4: usize) {
     // Loop through the headers and load each loadable segment into memory
 
     // let unaligned_num_header = core::ptr::addr_of!(elf_header.e_phnum);
@@ -177,6 +177,7 @@ fn parse_program_headers(file_start: usize, elf_header: &ElfHeader) {
                     program_header.p_filesz,
                     program_header.p_memsz,
                     program_header.p_vaddr,
+                    p4
                 );
             }
             _ => {}
@@ -189,6 +190,7 @@ fn load_segment_into_memory(
     filesz: usize,
     memsz: usize,
     v_address: usize,
+    p4: usize
 ) -> usize {
     // Allocate appropriate amount of memory
     let rounded_size = page_frame_allocator::round_to_nearest_page(memsz);
@@ -204,7 +206,7 @@ fn load_segment_into_memory(
         core::ptr::copy_nonoverlapping(source_raw as *mut u8, dest as *mut u8, filesz as usize);
     }
 
-    paging::map_pages(number_of_pages, v_address, dest as usize);
+    paging::map_pages_custom_p4(number_of_pages, v_address, dest as usize, p4);
 
     v_address + (rounded_size)
 }

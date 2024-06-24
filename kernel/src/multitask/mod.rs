@@ -35,7 +35,7 @@ pub struct Process {
     pub rsp: *const usize,
     pub process_priority: ProcessPriority,
     pub time_taken: usize,
-    pub cr3: usize,
+    pub p4: usize,
 }
 
 pub struct ProcessManager {
@@ -57,10 +57,10 @@ impl ProcessManager {
         &mut self,
         priority: ProcessPriority,
         pid: usize,
-        multiboot_data: (usize, usize),
+        multiboot_start_addr: usize,
     ) {
         let converted_priority = ProcessPriority::convert_to_value(priority);
-        let process = Process::init(priority, pid, multiboot_data);
+        let process = Process::init(priority, pid, multiboot_start_addr);
 
         self.tasks.enqueue(process, converted_priority);
     }
@@ -103,13 +103,15 @@ impl ProcessPriority {
 
 // multiboot data defines the address of the process followed by its size
 impl Process {
-    pub fn init(priority: ProcessPriority, pid: usize, multiboot_data: (usize, usize)) -> Process {
+    pub fn init(priority: ProcessPriority, pid: usize, multiboot_start_addr: usize) -> Process {
         // Allocate a page of memory for the stack
         // let mut rsp: *mut usize = kmalloc(paging::PAGE_SIZE);
         let mut rsp = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap();
         PAGE_FRAME_ALLOCATOR.free();
 
-        elf::parse(multiboot_data.0);
+        let mut p4 = paging::deep_clone() as usize;
+
+        elf::parse(multiboot_start_addr, p4);
 
         print_serial!("Parsed process successfully\n");
 
@@ -143,7 +145,7 @@ impl Process {
             *rsp.offset(-18) = 0; // R13
             *rsp.offset(-19) = 0; // R14
             *rsp.offset(-20) = 0; // R15
-            *rsp.offset(-21) = 0x000000133000; // CR3
+            *rsp.offset(-21) = p4; // CR3
             rsp = rsp.offset(-21);
         }
 
@@ -152,7 +154,7 @@ impl Process {
             rsp,
             process_priority: priority,
             time_taken: 0,
-            cr3: 0x000000133000,
+            p4,
         }
     }
 }

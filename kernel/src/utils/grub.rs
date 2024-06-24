@@ -34,30 +34,13 @@ const VBE_DISPI_LFB_ENABLED: u16 = 0x40;
 
 pub fn initalise_userland(multiboot_info: &MultibootBootInfo) {
     for tag in multiboot_info.get_module_tags() {
-        let module_addr = tag.mod_start as usize;
-        let module_len = (tag.mod_end - tag.mod_start) as usize;
-
         PROCESS_MANAGER.lock().add_process(
             multitask::ProcessPriority::High,
             0,
-            (module_addr, module_len),
+            tag.mod_start as usize,
         );
         PROCESS_MANAGER.free();
     }
-}
-
-pub fn get_end_of_memory(multiboot_info: &MultibootBootInfo) -> usize {
-    let mut end_memory: usize = 0;
-    let mmap_tag = multiboot_info.get_memory_map_tag().expect("Expected mmap");
-    for tag in mmap_tag.get_available_mmap_entries() {
-        print_serial!(
-            "Memory Map Entry:\n Start Address: 0x{:x}\n",
-            tag.start_address()
-        );
-        print_serial!("End Address: 0x{:x}\n", tag.end_address());
-        end_memory = tag.end_address()
-    }
-    end_memory
 }
 
 pub fn bga_set_video_mode() {
