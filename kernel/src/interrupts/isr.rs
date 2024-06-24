@@ -106,6 +106,7 @@ pub extern "C" fn setup_pit_handler() -> ! {
             "push r15",
             "mov rdi, rsp",
             "cld",
+            "xchg bx, bx",
             "call {0}",
             "xchg bx, bx",
             "mov rsp, rax",
