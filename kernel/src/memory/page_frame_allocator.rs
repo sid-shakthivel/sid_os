@@ -4,6 +4,7 @@ To manage the frames, a stack of free pages along with a pointer to first page a
 */
 
 use crate::ds::stack;
+use crate::utils::multiboot2::MultibootBootInfo;
 use crate::{print_serial, utils::spinlock::Lock, CONSOLE};
 
 use super::paging::{self, PAGE_SIZE};
@@ -43,16 +44,12 @@ impl PageFrameAllocator {
         }
     }
 
-    pub fn init(&mut self, mut memory_start: usize, mut memory_end: usize) {
-        memory_start = round_to_nearest_page(memory_start) + 0x1000;
-        memory_start = 0xf50000;
-        memory_end = round_to_nearest_page(memory_end);
+    pub fn init(&mut self, multiboot_info: &MultibootBootInfo) {
+        self.memory_start = round_to_nearest_page(multiboot_info.start_of_useable_memory());
+        self.memory_end = round_to_nearest_page(multiboot_info.end_of_useable_memory());
 
-        self.memory_start = memory_start + (paging::PAGE_SIZE * 2);
-        self.memory_end = memory_end;
-        self.free_page_frames =
-            unsafe { Some(&mut *((memory_start + paging::PAGE_SIZE) as *mut FreeStack)) };
-        self.current_page = memory_start + (paging::PAGE_SIZE * 2);
+        self.free_page_frames = unsafe { Some(&mut *(self.memory_start as *mut FreeStack)) };
+        self.current_page = self.memory_start + paging::PAGE_SIZE;
     }
 
     /*

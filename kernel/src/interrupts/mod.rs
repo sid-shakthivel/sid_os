@@ -27,7 +27,7 @@ use crate::multitask::PROCESS_MANAGER;
 use crate::print_serial;
 use crate::setup_exception_with_e_handler;
 use crate::setup_interrupt_handler;
-use crate::utils::multiboot2_test::MULTIBOOT2_BOOTLOADER_MAGIC;
+use crate::utils::multiboot2::MULTIBOOT2_BOOTLOADER_MAGIC;
 use crate::utils::ports::inb;
 use crate::CONSOLE;
 use core::arch::asm;

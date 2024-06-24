@@ -1,6 +1,11 @@
 use crate::print_serial;
 use crate::CONSOLE;
 
+extern "C" {
+    static __kernel_end: u8;
+    static __kernel_start: u8;
+}
+
 pub const MULTIBOOT2_BOOTLOADER_MAGIC: usize = 0x36d76289;
 
 #[repr(C)]
@@ -16,6 +21,47 @@ impl MultibootBootInfo {
 
     pub fn end_address(&self) -> usize {
         self.start_address() + self.get_size()
+    }
+
+    pub fn start_of_useable_memory(&self) -> usize {
+        let kernel_end_addr = unsafe { &__kernel_end as *const u8 as usize };
+        let multiboot_end_addr = self.end_address();
+
+        let end_module_addr = self
+            .get_module_tags()
+            .map(|entry| entry.mod_end)
+            .max()
+            .unwrap_or(0) as usize;
+
+        // print_serial!("kernel end addr {:#X}\n", kernel_end_addr);
+        // print_serial!("multiboot end addr {:#X}\n", multiboot_end_addr);
+        // print_serial!("module end addr {:#X}\n", end_module_addr);
+
+        // assert!(
+        //     end_module_addr > kernel_end_addr,
+        //     "Kernel end addr > End module addr\n"
+        // );
+
+        // assert!(
+        //     end_module_addr > multiboot_end_addr,
+        //     "Multiboot adr > End module addr\n"
+        // );
+
+        end_module_addr.max(multiboot_end_addr).max(kernel_end_addr)
+    }
+
+    pub fn end_of_useable_memory(&self) -> usize {
+        // let mut end_memory: usize = 0;
+        let mmap_tag = self.get_memory_map_tag().expect("Expected mmap");
+
+        let end_memory = mmap_tag
+            .get_available_mmap_entries()
+            .into_iter()
+            .map(|entry| entry.end_address())
+            .max()
+            .unwrap_or(0);
+
+        end_memory
     }
 
     pub fn get_size(&self) -> usize {

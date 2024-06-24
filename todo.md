@@ -8,9 +8,6 @@ Remember:
 ```
 
 Now:
-- Where actually is the start of memory????
-    Just need a few assertions 
-    Just set it to a a page after the last module
 - The allocator may still be slightly broken
 - Clone directories properly and test with another process
 - Allow for both kernel and user tasks (basic abstraction)

@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::{
-    multiboot2_test::MultibootBootInfo,
+    multiboot2::MultibootBootInfo,
     ports::{inpw, outpw},
 };
 
@@ -33,26 +33,9 @@ const VBE_DISPI_INDEX_Y_OFFSET: u16 = 9;
 const VBE_DISPI_LFB_ENABLED: u16 = 0x40;
 
 pub fn initalise_userland(multiboot_info: &MultibootBootInfo) {
-    let mut count: u32 = 0;
-
-    // for tag in multiboot_info.tags() {
-    //     count += 1;
-    //     print_serial!("{}\n", tag.typ);
-    // }
-
-    print_serial!("nmber of totoal tags = {}\n", count);
-
     for tag in multiboot_info.get_module_tags() {
-        // All modules are programs (so far)
-
         let module_addr = tag.mod_start as usize;
         let module_len = (tag.mod_end - tag.mod_start) as usize;
-
-        print_serial!(
-            "This is the module start address 0x{:x} and this is the size 0x{:x}\n",
-            module_addr,
-            module_len
-        );
 
         PROCESS_MANAGER.lock().add_process(
             multitask::ProcessPriority::High,
