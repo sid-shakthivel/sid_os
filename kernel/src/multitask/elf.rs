@@ -204,14 +204,6 @@ fn load_segment_into_memory(
         core::ptr::copy_nonoverlapping(source_raw as *mut u8, dest as *mut u8, filesz as usize);
     }
 
-    // Map the physical pages to the virtual address provided
-    print_serial!(
-        "0x{:x} 0x{:x} pages: {}\n",
-        v_address,
-        dest as usize,
-        number_of_pages
-    );
-
     paging::map_pages(number_of_pages, v_address, dest as usize);
 
     v_address + (rounded_size)

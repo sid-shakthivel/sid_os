@@ -87,6 +87,7 @@ macro_rules! setup_interrupt_handler {
 // Must save data in rax eg mov rsp, rax
 #[naked]
 pub extern "C" fn setup_pit_handler() -> ! {
+    // HAVE NOT ACTUALLY MOV'D RAX INTO CR3
     unsafe {
         asm!(
             "push rax",
@@ -104,12 +105,14 @@ pub extern "C" fn setup_pit_handler() -> ! {
             "push r13",
             "push r14",
             "push r15",
+            "mov rax, cr3",
+            "push rax",
             "mov rdi, rsp",
             "cld",
-            "xchg bx, bx",
             "call {0}",
-            "xchg bx, bx",
             "mov rsp, rax",
+            "mov rax, [rsp]",
+            "add rsp, 0x08",
             "pop r15",
             "pop r14",
             "pop r13",

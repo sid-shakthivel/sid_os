@@ -11,8 +11,9 @@ use core::usize;
 
 use crate::ds::queue::PriorityQueue;
 use crate::memory::allocator::{kfree, kmalloc};
+use crate::memory::gdt::TSS;
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
-use crate::memory::paging;
+use crate::memory::paging::{self, PageTable};
 use crate::print_serial;
 use crate::utils::spinlock::Lock;
 use crate::CONSOLE;
@@ -34,14 +35,13 @@ pub struct Process {
     pub rsp: *const usize,
     pub process_priority: ProcessPriority,
     pub time_taken: usize,
-    // pub cr3: *mut Table,
+    pub cr3: usize,
 }
 
 pub struct ProcessManager {
     pub tasks: PriorityQueue<Process>,
     pub current_process_id: usize,
     pub is_from_kernel: bool,
-    pub kernel_address: usize,
 }
 
 impl ProcessManager {
@@ -50,7 +50,6 @@ impl ProcessManager {
             tasks: PriorityQueue::<Process>::new(),
             current_process_id: 0,
             is_from_kernel: true,
-            kernel_address: 0,
         }
     }
 
@@ -67,24 +66,22 @@ impl ProcessManager {
     }
 
     pub fn switch_process(&mut self, old_rsp: usize) -> usize {
-        // print_serial!("Switch\n");
-        // print_serial!("OLD RSP: 0x{:x}\n", old_rsp);
-
-        // Must save
         let current_process = self.tasks.get_head();
 
+        /*
+           Coming from the kernel:
+           - Update TSS to have a clean stack when coming from user to kernel
+        */
         if (self.is_from_kernel) {
-            print_serial!("Kernel rsp: 0x{:x}\n", old_rsp as usize);
             self.is_from_kernel = false;
-            self.kernel_address = old_rsp;
+            unsafe {
+                TSS.privilege_stack_table[0] = old_rsp;
+            }
         } else {
-            // print_serial!("Old RSP: 0x{:x}\n", current_process.rsp as usize);
-            current_process.rsp = (old_rsp) as *const usize;
-            // print_serial!("New RSP: 0x{:x}\n", current_process.rsp as usize);
+            current_process.rsp = old_rsp as *const usize;
         }
 
-        let new_rsp = current_process.rsp;
-        return new_rsp as usize;
+        return current_process.rsp as usize;
     }
 }
 
@@ -114,7 +111,7 @@ impl Process {
 
         elf::parse(multiboot_data.0);
 
-        print_serial!("Parsed successfully\n");
+        print_serial!("Parsed process successfully\n");
 
         unsafe {
             rsp = rsp.offset(511);
@@ -146,17 +143,16 @@ impl Process {
             *rsp.offset(-18) = 0; // R13
             *rsp.offset(-19) = 0; // R14
             *rsp.offset(-20) = 0; // R15
-                                  // *rsp.offset(-21) = new_p4 as u64; // CR3
-            rsp = rsp.offset(-20);
-
-            print_serial!("The stack pointer is 0x{:x}\n", rsp as usize);
+            *rsp.offset(-21) = 0x000000133000; // CR3
+            rsp = rsp.offset(-21);
         }
 
         Process {
-            pid: pid,
-            rsp: rsp,
+            pid,
+            rsp,
             process_priority: priority,
             time_taken: 0,
+            cr3: 0x000000133000,
         }
     }
 }

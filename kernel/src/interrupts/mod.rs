@@ -27,7 +27,7 @@ use crate::multitask::PROCESS_MANAGER;
 use crate::print_serial;
 use crate::setup_exception_with_e_handler;
 use crate::setup_interrupt_handler;
-use crate::utils::multiboot2::MULTIBOOT2_BOOTLOADER_MAGIC;
+use crate::utils::multiboot2_test::MULTIBOOT2_BOOTLOADER_MAGIC;
 use crate::utils::ports::inb;
 use crate::CONSOLE;
 use core::arch::asm;
@@ -142,9 +142,7 @@ pub extern "C" fn exception_handler(stack_frame: &StackFrame, exception_id: usiz
         _ => {}
     }
 
-    print_serial!("{:?}\n", stack_frame);
-
-    panic!("");
+    panic!("{:?}\n", stack_frame);
 }
 
 pub extern "C" fn test_syscall_handler(stack_frame: &InterruptStackFrame) -> isize {
@@ -196,34 +194,17 @@ pub extern "C" fn exception_with_error_handler(
     }
 
     print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
-    print_serial!("{:?}\n", stack_frame);
-
-    panic!("");
+    panic!("{:?}\n", stack_frame);
 
     loop {}
 }
 
 pub extern "C" fn pit_handler(old_task_rsp: usize) -> usize {
-    // Update TSS to have a clean stack when coming from user to kernel
-
-    // print_serial!("In Pit Handler\n");
-
     PICS.lock().acknowledge(0x20 as u8);
     PICS.free();
+
     let rsp = PROCESS_MANAGER.lock().switch_process(old_task_rsp);
     PROCESS_MANAGER.free();
-
-    let kernel_addr = PROCESS_MANAGER.lock().kernel_address;
-    PROCESS_MANAGER.free();
-
-    if (kernel_addr > 0) {
-        unsafe {
-            TSS.privilege_stack_table[0] = kernel_addr;
-            // let ptr = core::ptr::addr_of!(TSS.privilege_stack_table[0]);
-            // let val = unsafe { ptr.read_unaligned() };
-            // print_serial!("value thing is 0x{:x}\n", val);
-        }
-    }
 
     rsp
 }

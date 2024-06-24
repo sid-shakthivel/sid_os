@@ -23,16 +23,7 @@ pub struct CondensedWindow {
 }
 
 pub fn syscall_handler(registers: &InterruptStackFrame) -> i64 {
-    // unsafe {
-    //     print_serial!("0x{:x}\n", registers.rax);
-    //     print_serial!("0x{:x}\n", registers.rbx);
-    //     print_serial!("0x{:x}\n", registers.rcx);
-    //     print_serial!("0x{:x}\n", registers.rdx);
-    // }
-
     let syscall_id = registers.rax;
-
-    // print_serial!("syscall id {0}\n", syscall_id);
 
     return match syscall_id {
         4 => isatty(registers.rbx),

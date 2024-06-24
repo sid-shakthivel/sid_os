@@ -49,10 +49,31 @@ impl MultibootBootInfo {
 
 #[repr(u32)]
 pub enum TagType {
-    End = 0, // Marks end of tags
-    Module = 3,
-    MemoryMap = 6,
-    Framebuffer = 8,
+    End = 0,            // Marks end of tags
+    BootLoaderName = 2, // Bootloader name tag
+    Module = 3,         // Module tag
+    BasicMemInfo = 4,   // Basic memory information tag
+    BootDev = 5,        // Boot device tag
+    MemoryMap = 6,      // Memory map tag
+    Vbe = 7,            // VBE (Video Display Information) tag
+    Framebuffer = 8,    // Framebuffer tag
+    AcpiOld = 9,        // ACPI (Advanced Configuration and Power Interface) tag (old)
+    AcpiNew = 10,       // ACPI (Advanced Configuration and Power Interface) tag (new)
+    Network = 11,       // Network configuration tag
+    Efi32 = 12,         // EFI 32-bit tag
+    Efi64 = 13,         // EFI 64-bit tag
+    Smbios = 14,        // SMBIOS (System Management BIOS) tag
+    ElfSections = 15,   // ELF sections tag
+    Apm = 16,           // APM (Advanced Power Management) BIOS tag
+    Efi32Ih = 17,       // EFI 32-bit real-time clock tag
+    Efi64Ih = 18,       // EFI 64-bit real-time clock tag
+    Scsi = 19,          // SCSI (Small Computer System Interface) tag
+    Edid = 20,          // EDID (Extended Display Identification Data) tag
+    EfiMmap = 21,       // EFI memory map tag
+    EfiBs = 22,         // EFI boot services tag
+    Efi32St = 23,       // EFI 32-bit system table tag
+    Efi64St = 24,       // EFI 64-bit system table tag
+    LoadBaseAddr = 25,  // Load base address tag
 }
 
 #[repr(u32)]

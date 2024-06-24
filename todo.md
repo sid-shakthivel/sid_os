@@ -1,11 +1,19 @@
 Remember:
 - Bochs breakpoint is xchg bx, bx
 - info tab specifies v_addr then p_addr
+- To print a value in a packed struct do the following:
+```
+    let ptr = core::ptr::addr_of!(TSS.privilege_stack_table[0]);
+    let val = unsafe { ptr.read_unaligned() };
+```
 
 Now:
-- When handling syscall need to properly return variables cause allocation
-- The allocator is still broken
-- Need to save the rsp properly thats the issue
+- Where actually is the start of memory????
+    Just need a few assertions 
+    Just set it to a a page after the last module
+- The allocator may still be slightly broken
+- Clone directories properly and test with another process
+- Allow for both kernel and user tasks (basic abstraction)
 
 Refactoring
 - PS2 Mouse Things
