@@ -158,11 +158,6 @@ fn validate_file(elf_header: &ElfHeader) -> bool {
 */
 fn parse_program_headers(file_start: usize, elf_header: &ElfHeader, p4: usize) {
     // Loop through the headers and load each loadable segment into memory
-
-    // let unaligned_num_header = core::ptr::addr_of!(elf_header.e_phnum);
-    // let aligned_num_header = unsafe { core::ptr::read_unaligned(unaligned_num_header) };
-    // print_serial!("number of elf headers: {}\n", aligned_num_header);
-
     for i in 0..elf_header.e_phnum {
         let address =
             file_start + elf_header.e_phoff + (mem::size_of::<ElfProgramHeader>()) * (i as usize);

@@ -8,8 +8,10 @@ Remember:
 ```
 
 Now:
+- Refactor the queue
+- Refactor the stack
 - The allocator may still be slightly broken
-- Allow for both kernel and user tasks (basic abstraction)
+- Allow for both kernel and user tasks (inheritance)
 
 Refactoring
 - PS2 Mouse Things
@@ -24,12 +26,10 @@ Bugs:
 - Mouse when multiple windows
 
 New:
-- Syscalls
-- Need to extend multitasking capabilities
+- Continue syscalls
+- Switch
 
 Later:
-- Must consider way to handle handle cr3 register (deep clone to start with)
-- Zero the BSS (when we have it)
 - Implement adding/removing list nodes more
 - Consider what happens when a window is closed?
 - Add font to makefile
@@ -49,3 +49,52 @@ https://github.com/sid-shakthivel/sid_os/blob/6ccee810148848dfd6251a2f2ff59912bd
 https://github.com/rust-osdev/ps2-mouse/blob/master/src/lib.rs
 https://jmnl.xyz/window-manager/
 https://github.com/sid-shakthivel/os64/blob/3b90c4e56d66eef83713607586449404adbbd5d0/kernel/src/page_frame_allocator.rs
+
+
+````
+ match index {
+            0 => unsafe {
+                if (self.head.is_some()) {
+                    let head = ListNode::get_mut_ref_optional(self.head);
+                    let address = self.head.unwrap() as *mut usize;
+
+                    if (head.next.is_some()) {
+                        let head_next = ListNode::get_mut_ref_optional(head.next);
+                        head_next.prev = None;
+                    }
+
+                    self.head = head.next;
+                    let payload = head.payload.clone();
+
+                    self.length -= 1;
+
+                    return Some((payload, address));
+                }
+            },
+            length => unsafe {
+                if (self.tail.is_some()) {
+                    let tail = ListNode::get_mut_ref_optional(self.tail);
+
+                    if (tail.prev.is_some()) {
+                        let tail_prev = ListNode::get_mut_ref_optional(tail.prev);
+                        tail_prev.next = None;
+                    }
+
+                    let address = self.tail.unwrap() as *mut usize;
+
+                    self.tail = tail.prev;
+
+                    let payload = tail.payload.clone();
+                    tail.prev = None;
+
+                    self.length -= 1;
+
+                    return Some((payload, address));
+                }
+            },
+            _ => {
+                // Implement for any other index (through looping)
+                panic!("Must implement this!!\n");
+            }
+        };
+        ```

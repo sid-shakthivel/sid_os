@@ -48,6 +48,8 @@ impl PageFrameAllocator {
         self.memory_start = round_to_nearest_page(multiboot_info.start_of_useable_memory());
         self.memory_end = round_to_nearest_page(multiboot_info.end_of_useable_memory());
 
+        print_serial!("start of memory is {:#X}\n", self.memory_start);
+
         self.free_page_frames = unsafe { Some(&mut *(self.memory_start as *mut FreeStack)) };
         self.current_page = self.memory_start + paging::PAGE_SIZE;
     }

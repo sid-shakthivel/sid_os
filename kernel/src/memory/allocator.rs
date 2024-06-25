@@ -1,4 +1,4 @@
-use core::panic;
+use core::{mem, panic};
 
 /*
     Contains implementations for malloc, free
@@ -11,9 +11,7 @@ use crate::print_serial;
 use crate::utils::spinlock::Lock;
 use crate::CONSOLE;
 
-// Divide by 8 as usize is 8 bytes and a *mut usize points to 8 bytes
-const NODE_MEMORY_BLOCK_SIZE: isize = (core::mem::size_of::<ListNode<MemoryBlock>>() / 8) as isize;
-const TEST_BLOCK_SIZE: isize = (core::mem::size_of::<MemoryBlock>() / 8) as isize;
+const LIST_NODE_MEMORY_SIZE: isize = core::mem::size_of::<ListNode<MemoryBlock>>() as isize;
 
 /*
    +--------+------+-------+
@@ -22,7 +20,7 @@ const TEST_BLOCK_SIZE: isize = (core::mem::size_of::<MemoryBlock>() / 8) as isiz
 */
 #[derive(Clone, Debug, PartialEq)]
 struct MemoryBlock {
-    size: usize,      // Value in bytes
+    size: usize, // Value in bytes which includes size of the list memory block structure itself
     data: *mut usize, // Pointer to any data which is held within
 }
 
@@ -44,46 +42,38 @@ pub fn kmalloc(mut size: usize) -> *mut usize {
 
 fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
     if (should_update_size) {
-        // Size must include the size of a memory block (in bytes)
-        size += (NODE_MEMORY_BLOCK_SIZE as usize) * 8;
+        /*
+           Align block size
+           Include size of memory block so when free'd block is useable
+           Recursive method but only need to update size once (repeat would be a waste of memory)
+        */
 
-        // Must align block size by 8
-        size = align(size);
+        size = align(size + LIST_NODE_MEMORY_SIZE as usize);
     }
 
     let (index, wrapped_memory_block) = find_first_fit(size);
 
     match wrapped_memory_block {
         Some(memory_block) => {
-            // If block is larger then memory required, split region and add parts to list
+            // If block is larger then memory required, split region and add second part to list
             if memory_block.size > size {
-                // Remove old memory block
+                // Remove old memory block from list
                 FREE_MEMORY_BLOCK_LIST.lock().remove_at(index);
                 FREE_MEMORY_BLOCK_LIST.free();
 
-                // Create new memory block for malloc'd memory
-                // let address_of_header = get_header_address(memory_block.data);
-                let mut address_of_node = get_base_address(memory_block.data);
+                let node_addr = memory_block.data;
+                let header_addr = get_base_address(node_addr);
 
-                // Zero the entirety of the data
-                for i in 0..(memory_block.size / 8) {
-                    unsafe {
-                        *address_of_node.offset(i as isize) = 0;
-                    }
-                }
+                let new_node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
 
-                // Adjust size correctly for correct offset
-                let size_in_u64 = size / 8;
-
-                let dp = create_new_memory_block(size, address_of_node, false);
+                let dp = create_new_memory_block(size, header_addr, false);
 
                 // Add remaining section of block
-                address_of_node = unsafe {
-                    address_of_node.offset((size_in_u64 as isize + NODE_MEMORY_BLOCK_SIZE))
-                };
-                create_new_memory_block(memory_block.size - size, address_of_node, true);
+                let new_free_node_addr =
+                    unsafe { (header_addr as *mut u8).offset(size as isize) as *mut usize };
+                create_new_memory_block(memory_block.size - size, new_free_node_addr, true);
 
-                return dp;
+                return node_addr;
             } else {
                 // TODO: Check this soon
 
@@ -92,12 +82,7 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
                 FREE_MEMORY_BLOCK_LIST.lock().remove_at(index);
                 FREE_MEMORY_BLOCK_LIST.free();
 
-                let mut address_of_node = get_base_address(memory_block.data);
-                let size_in_u64 = size / 8;
-
-                let dp = create_new_memory_block(size, address_of_node, false);
-
-                return dp;
+                return memory_block.data;
             }
         }
         None => {
@@ -116,48 +101,40 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
 /*
     Recives pointer to memory address of payload
     Frees a memory region which can later be allocated
-    Only use this function if we decide to purely use this kmalloc/kfree instead of pfa stuff
-    Perhaps check if memories are subsequent
 */
 pub fn kfree(dp: *mut usize) {
-    let node_address = get_base_address(dp);
-    let header_address = get_header_address(dp);
+    let header_addr = get_base_address(dp);
+    let node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
+    let memory_block = node.payload.clone();
 
-    let header = unsafe { (&mut *(header_address as *mut MemoryBlock)).clone() };
-
-    // print_serial!("0x{:x} {:?}\n", header_address as usize, header);
-
-    let size_in_u64 = header.size / 8;
-
-    // Need to zero the data for safety
-    // for i in 0..NODE_MEMORY_BLOCK_SIZE {
-    //     unsafe {
-    //         *node_address.offset(i as isize) = 0;
-    //     }
-    // }
+    // Zero the entirety of the data
+    unsafe {
+        core::ptr::write_bytes(header_addr as *mut u8, 0, memory_block.size);
+    }
 
     // Add block to list of free blocks (to the front)
     FREE_MEMORY_BLOCK_LIST
         .lock()
-        .push_front(header, node_address as usize);
+        .push_back(memory_block, header_addr as usize);
     FREE_MEMORY_BLOCK_LIST.free();
 
+    let updated_node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
+
     // Check next node to merge memory regions together to alleviate fragmentation
-    // TODO: Add support for more nodes (prev as well)
 
-    // if let Some(next_node) = header.next {
-    //     let next_header = unsafe { &mut *next_node };
+    if let Some(prev_node) = updated_node.prev {
+        // Update the size of the previous node
+        unsafe {
+            (*prev_node).payload.size += updated_node.payload.size;
+        }
 
-    //     // Get total size of other region and update memory block
-    //     header.payload.size += next_header.payload.size;
+        // Remove last node
+        let length = FREE_MEMORY_BLOCK_LIST.lock().length;
+        FREE_MEMORY_BLOCK_LIST.free();
 
-    //     // Remove other region from linked list since updated
-    //     let length = FREE_MEMORY_BLOCK_LIST.lock().length;
-    //     FREE_MEMORY_BLOCK_LIST.free();
-
-    //     FREE_MEMORY_BLOCK_LIST.lock().remove_at(length - 1);
-    //     FREE_MEMORY_BLOCK_LIST.free();
-    // }
+        FREE_MEMORY_BLOCK_LIST.lock().remove_at(length - 1);
+        FREE_MEMORY_BLOCK_LIST.free();
+    }
 }
 
 /*
@@ -174,9 +151,9 @@ fn align(size: usize) -> usize {
 */
 fn find_first_fit(size: usize) -> (usize, Option<MemoryBlock>) {
     for (i, memory_block) in FREE_MEMORY_BLOCK_LIST.lock().into_iter().enumerate() {
-        if memory_block.unwrap().payload.size > size {
-            FREE_MEMORY_BLOCK_LIST.free();
-            return (i as usize, Some(memory_block.unwrap().payload.clone()));
+        FREE_MEMORY_BLOCK_LIST.free();
+        if memory_block.payload.size > size {
+            return (i, Some(memory_block.payload.clone()));
         }
     }
     FREE_MEMORY_BLOCK_LIST.free();
@@ -184,22 +161,19 @@ fn find_first_fit(size: usize) -> (usize, Option<MemoryBlock>) {
 }
 
 pub fn print_memory_list() {
-    print_serial!("printing free memory list\n");
-    for (i, memory_block) in FREE_MEMORY_BLOCK_LIST.lock().into_iter().enumerate() {
-        FREE_MEMORY_BLOCK_LIST.free();
-        let test = memory_block.unwrap();
-        print_serial!("{} {:?}\n", i, test);
+    for memory_block in FREE_MEMORY_BLOCK_LIST.lock().into_iter() {
+        print_serial!("{:?}\n", memory_block);
     }
     FREE_MEMORY_BLOCK_LIST.free();
 }
 
-// Extends accessible memory region of kernel heap by another page (4096 bytes)
+// Extends accessible memory region of kernel heap by a number of pages (4096 bytes)
 pub fn extend_memory_region(pages: usize) {
     // Allocate another page
     let address = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frames(pages);
     PAGE_FRAME_ALLOCATOR.free();
 
-    let size = (paging::PAGE_SIZE) * pages;
+    let size = paging::PAGE_SIZE * pages;
     create_new_memory_block(size, address, true);
 }
 
@@ -207,39 +181,27 @@ pub fn extend_memory_region(pages: usize) {
     Create a new memory block of a certain size
     Recieves size of block and address in which to create a new block
 */
-fn create_new_memory_block(size: usize, address: *mut usize, is_free: bool) -> *mut usize {
-    // print_serial!("Creating a new memory block at 0x{:x}\n", address as usize);
-    let dp_addr = unsafe { address.offset(NODE_MEMORY_BLOCK_SIZE) };
+fn create_new_memory_block(size: usize, addr: *mut usize, is_free: bool) -> *mut usize {
+    let dp_addr = unsafe { (addr as *mut u8).offset(LIST_NODE_MEMORY_SIZE) } as *mut usize;
     let new_memory_block = MemoryBlock::new(dp_addr, size);
 
     if is_free {
         // Push to linked list
         FREE_MEMORY_BLOCK_LIST
             .lock()
-            .push_back(new_memory_block, address as usize);
+            .push_back(new_memory_block, addr as usize);
         FREE_MEMORY_BLOCK_LIST.free();
     } else {
-        // Add meta data regardless
-        unsafe {
-            // *(address as *mut MemoryBlock) = new_memory_block;
-            let new_node = unsafe { &mut *(address as *mut ListNode<MemoryBlock>) };
-            new_node.init(new_memory_block);
-        }
+        let new_node = unsafe { &mut *(addr as *mut ListNode<MemoryBlock>) };
+        new_node.init(new_memory_block, None, None);
     }
 
-    return dp_addr;
+    dp_addr
 }
 
 /*
     Returns pointer to address of the list node in general
 */
 fn get_base_address(dp: *mut usize) -> *mut usize {
-    return unsafe { dp.offset(-1 * (NODE_MEMORY_BLOCK_SIZE) as isize) };
-}
-
-/*
-    Returns pointer to the address of the header in particular
-*/
-fn get_header_address(dp: *mut usize) -> *mut usize {
-    return unsafe { dp.offset(-1 * (TEST_BLOCK_SIZE) as isize) };
+    return unsafe { dp.offset(-1 * (LIST_NODE_MEMORY_SIZE / 8) as isize) };
 }

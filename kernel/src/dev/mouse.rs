@@ -14,7 +14,7 @@
 */
 
 use super::ps2;
-use crate::gfx::wm::WM;
+// use crate::gfx::wm::WM;
 use crate::print_serial;
 use crate::utils::spinlock::Lock;
 

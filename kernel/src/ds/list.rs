@@ -10,10 +10,15 @@ pub struct ListNode<T: 'static> {
 }
 
 impl<T> ListNode<T> {
-    pub fn init(&mut self, payload: T) {
+    pub fn init(
+        &mut self,
+        payload: T,
+        prev: Option<*mut ListNode<T>>,
+        next: Option<*mut ListNode<T>>,
+    ) {
         self.payload = payload;
-        self.prev = None;
-        self.next = None;
+        self.prev = prev;
+        self.next = next;
     }
 }
 
@@ -25,13 +30,17 @@ pub struct List<T: 'static> {
 }
 
 impl<T> ListNode<T> {
-    pub fn get_mut_ref(list_node: Option<*mut ListNode<T>>) -> &'static mut ListNode<T> {
+    pub fn get_mut_ref_optional(list_node: Option<*mut ListNode<T>>) -> &'static mut ListNode<T> {
         unsafe {
             list_node
                 .expect("ListNode is undefined")
                 .as_mut()
                 .expect("ListNode is undefined")
         }
+    }
+
+    pub fn get_mut_ref(list_node: *mut ListNode<T>) -> &'static mut ListNode<T> {
+        unsafe { list_node.as_mut().expect("ListNode is undefined") }
     }
 }
 
@@ -48,19 +57,17 @@ impl<T: Clone> List<T> {
     pub fn push_front(&mut self, payload: T, addr: usize) {
         // Create a new node directly at a specific memory location
         let new_node = unsafe { &mut *(addr as *mut ListNode<T>) };
-        new_node.init(payload);
+        new_node.init(payload, None, self.head);
 
-        if self.head.is_some() {
-            let head = ListNode::get_mut_ref(self.head);
-            new_node.next = Some(head);
-            head.prev = Some(new_node);
-        }
-
-        self.head = Some(new_node);
-
-        if self.length == 0 {
+        // Check and set the current head to point to the new head
+        if let Some(head) = self.head {
+            ListNode::get_mut_ref(head).prev = Some(new_node);
+        } else {
             self.tail = Some(new_node);
         }
+
+        // Set the head to the new node
+        self.head = Some(new_node);
 
         self.length += 1;
     }
@@ -69,125 +76,94 @@ impl<T: Clone> List<T> {
     pub fn push_back(&mut self, payload: T, addr: usize) {
         // Create a new node directly at a specific memory location
         let new_node = unsafe { &mut *(addr as *mut ListNode<T>) };
-        new_node.init(payload);
+        new_node.init(payload, self.tail, None);
 
-        // Always adds to the end of the list
-        match self.length {
-            0 => {
-                self.head = Some(new_node);
-                self.tail = Some(new_node);
-            }
-            _ => {
-                let tail = ListNode::get_mut_ref(self.tail);
-
-                new_node.prev = self.tail;
-                tail.next = Some(new_node);
-
-                self.tail = Some(new_node);
-            }
+        // Check and set the current tail to point to the new tail
+        if let Some(tail) = self.tail {
+            ListNode::get_mut_ref(tail).next = Some(new_node);
+        } else {
+            self.head = Some(new_node);
         }
+
+        // Set the tail to the new node
+        self.tail = Some(new_node);
 
         self.length += 1;
     }
 
     pub fn remove_at(&mut self, index: usize) -> Option<(T, *mut usize)> {
-        if index < 0 || index > self.length {
-            panic!("List-Remove: Index Out of Bounds");
+        if index >= self.length || index < 0 {
+            return None;
         }
 
-        // print_serial!("Removing at index {}\n", index);
+        let mut current = self.head?;
+        let mut count = 0;
 
-        let length = self.length - 1;
+        // Traverse to the node at the specified index
+        while count < index {
+            current = unsafe { (*current).next? };
+            count += 1;
+        }
 
-        // if index == length {
-        //     print_serial!("hey hey hey\n");
-        // }
+        // Extract the node to be removed
+        let node = unsafe { &mut *current };
 
-        match index {
-            0 => unsafe {
-                if (self.head.is_some()) {
-                    let head = ListNode::get_mut_ref(self.head);
-                    let address = self.head.unwrap() as *mut usize;
-
-                    if (head.next.is_some()) {
-                        let head_next = ListNode::get_mut_ref(head.next);
-                        head_next.prev = None;
-                    }
-
-                    self.head = head.next;
-                    let payload = head.payload.clone();
-
-                    self.length -= 1;
-
-                    return Some((payload, address));
-                }
+        // Update the links
+        match (node.prev, node.next) {
+            (Some(prev), Some(next)) => unsafe {
+                (*prev).next = Some(next);
+                (*next).prev = Some(prev);
             },
-            length => unsafe {
-                if (self.tail.is_some()) {
-                    let tail = ListNode::get_mut_ref(self.tail);
-
-                    if (tail.prev.is_some()) {
-                        let tail_prev = ListNode::get_mut_ref(tail.prev);
-                        tail_prev.next = None;
-                    }
-
-                    let address = self.tail.unwrap() as *mut usize;
-
-                    self.tail = tail.prev;
-
-                    let payload = tail.payload.clone();
-                    tail.prev = None;
-
-                    self.length -= 1;
-
-                    return Some((payload, address));
+            (Some(prev), None) => {
+                unsafe {
+                    (*prev).next = None;
                 }
-            },
-            _ => {
-                // Implement for any other index (through looping)
-                panic!("Must implement this!!\n");
+                self.tail = node.prev;
             }
-        };
+            (None, Some(next)) => {
+                unsafe {
+                    (*next).prev = None;
+                }
+                self.head = Some(next);
+            }
+            (None, None) => {
+                self.head = None;
+                self.tail = None;
+            }
+        }
 
-        return None;
+        self.length -= 1;
+
+        // Clear the node's links
+        node.prev = None;
+        node.next = None;
+
+        return Some((node.payload.clone(), current as *mut usize));
     }
 }
 
 impl<'a, T> IntoIterator for &'a List<T> {
-    type Item = Option<&'a ListNode<T>>;
-    type IntoIter = ListIntoIterator<'a, T>;
+    type Item = &'a ListNode<T>;
+    type IntoIter = ListIterator<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        ListIntoIterator {
-            current: match self.head {
-                Some(head) => unsafe { Some(&*head) },
-                _ => None,
-            },
+        ListIterator {
+            current: self.head.map(|head| unsafe { &*head }),
         }
     }
 }
 
-/// Iterator for the List
-pub struct ListIntoIterator<'a, T: 'static> {
+pub struct ListIterator<'a, T: 'static> {
     current: Option<&'a ListNode<T>>,
 }
 
-impl<'a, T> Iterator for ListIntoIterator<'a, T> {
-    type Item = Option<&'a ListNode<T>>;
+impl<'a, T> Iterator for ListIterator<'a, T> {
+    type Item = &'a ListNode<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.current {
-            Some(node) => {
-                let saved_current = self.current;
-
-                self.current = match node.next {
-                    Some(value) => unsafe { Some(&*value) },
-                    None => None,
-                };
-
-                return Some(saved_current);
-            }
-            None => None,
-        }
+        self.current.map(|node| {
+            self.current = node.next.map(|next| unsafe { &*next });
+            node
+        })
     }
 }

@@ -3,8 +3,6 @@ mod rect;
 pub mod window;
 pub mod wm;
 
-use crate::gfx::window::Window;
-use crate::gfx::wm::{WindowManager, WM};
 use crate::memory::allocator::{kmalloc, print_memory_list};
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::memory::{page_frame_allocator, paging};

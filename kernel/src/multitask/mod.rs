@@ -13,7 +13,7 @@ use crate::ds::queue::PriorityQueue;
 use crate::memory::allocator::{kfree, kmalloc};
 use crate::memory::gdt::TSS;
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
-use crate::memory::paging::{self, PageTable};
+use crate::memory::paging::{self, PageTable}; 
 use crate::print_serial;
 use crate::utils::spinlock::Lock;
 use crate::CONSOLE;

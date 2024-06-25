@@ -196,28 +196,28 @@ impl Rect {
         Splits a list of already splitted rectangles by another splitting rectangle
     */
     pub fn split_rects(rects: &mut Queue<Rect>, splitting_rect: &Rect) {
-        let mut test_rects = Queue::<Rect>::new();
+        // let mut test_rects = Queue::<Rect>::new();
 
-        for mut i in 0..rects.list.length {
-            let mut working_rect = rects.get_element(i).unwrap();
+        // for mut i in 0..rects.list.length {
+        //     let mut working_rect = rects.get_element(i).unwrap();
 
-            // Check for intersection
-            if (!splitting_rect.does_intersect(&working_rect.1)) {
-                test_rects.enqueue(working_rect.1.clone());
-                continue;
-            }
+        //     // Check for intersection
+        //     if (!splitting_rect.does_intersect(&working_rect.1)) {
+        //         test_rects.enqueue(working_rect.1.clone());
+        //         continue;
+        //     }
 
-            let mut splitted_rects = Self::split_rect(&mut working_rect.1, splitting_rect);
+        //     let mut splitted_rects = Self::split_rect(&mut working_rect.1, splitting_rect);
 
-            for rect in splitted_rects.list.into_iter() {
-                test_rects.enqueue(rect.unwrap().payload);
-            }
-        }
+        //     for rect in splitted_rects.list.into_iter() {
+        //         test_rects.enqueue(rect.unwrap().payload);
+        //     }
+        // }
 
-        rects.empty();
+        // rects.empty();
 
-        for rect in test_rects.list.into_iter() {
-            rects.enqueue(rect.unwrap().payload);
-        }
+        // for rect in test_rects.list.into_iter() {
+        //     rects.enqueue(rect.unwrap().payload);
+        // }
     }
 }

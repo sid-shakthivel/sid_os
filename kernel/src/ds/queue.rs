@@ -1,4 +1,4 @@
-use super::list::{List, ListIntoIterator, ListNode};
+use super::list::{List, ListIterator, ListNode};
 use crate::memory::{
     allocator::{kfree, kmalloc},
     page_frame_allocator::PAGE_FRAME_ALLOCATOR,
@@ -83,11 +83,11 @@ impl<T: Clone> Queue<T> {
     }
 
     pub fn get_element(&mut self, target_index: usize) -> Option<(usize, T)> {
-        for (index, node) in self.list.into_iter().enumerate() {
-            if (index == target_index) {
-                return Some((index, node.unwrap().payload.clone()));
-            }
-        }
+        // for (index, node) in self.list.into_iter().enumerate() {
+        //     if (index == target_index) {
+        //         return Some((index, node.unwrap().payload.clone()));
+        //     }
+        // }
         None
     }
 

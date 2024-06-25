@@ -45,13 +45,12 @@ fn init_mouse() {
 }
 
 fn on_complete(mouse_state: MouseState) {
-    use crate::gfx::wm::WM;
 
-    WM.lock().handle_mouse_event(
-        (mouse_state.get_x(), mouse_state.get_y() * -1),
-        mouse_state.left_button_down(),
-    );
-    WM.free();
+    // WM.lock().handle_mouse_event(
+    //     (mouse_state.get_x(), mouse_state.get_y() * -1),
+    //     mouse_state.left_button_down(),
+    // );
+    // WM.free();
 }
 
 #[no_mangle]
@@ -77,7 +76,7 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     // grub::bga_set_video_mode();
     // gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
 
-    grub::initalise_userland(multiboot_info);
+    // grub::initalise_userland(multiboot_info);
 
     interrupts::init();
 
@@ -87,7 +86,14 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     interrupts::pic::PICS.lock().init();
     interrupts::pic::PICS.free();
 
-    interrupts::enable();
+    // interrupts::enable();
+
+    let ptr = kmalloc(core::mem::size_of::<usize>());
+    // let ptr2 = kmalloc(core::mem::size_of::<usize>());
+    print_serial!("FREE\n");
+    kfree(ptr);
+
+    print_memory_list();
 
     print_serial!("Finished Execution\n");
 
