@@ -26,7 +26,7 @@ impl<T> ListNode<T> {
 pub struct List<T: 'static> {
     pub head: Option<*mut ListNode<T>>,
     pub tail: Option<*mut ListNode<T>>,
-    pub length: usize,
+    length: usize,
 }
 
 impl<T> ListNode<T> {
@@ -51,6 +51,10 @@ impl<T: Clone> List<T> {
             tail: None,
             length: 0,
         };
+    }
+
+    pub fn length(&self) -> usize {
+        self.length
     }
 
     // Create a new node at the front of the list
@@ -89,6 +93,18 @@ impl<T: Clone> List<T> {
         self.tail = Some(new_node);
 
         self.length += 1;
+    }
+
+    pub fn get_at(&mut self, index: usize) -> Option<&mut T> {
+        let mut current = self.head?;
+        let mut count = 0;
+
+        while count < index {
+            current = unsafe { (*current).next? };
+            count += 1;
+        }
+
+        return unsafe { Some(&mut (*current).payload) };
     }
 
     pub fn remove_at(&mut self, index: usize) -> Option<(T, *mut usize)> {

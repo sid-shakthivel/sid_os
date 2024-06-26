@@ -89,8 +89,7 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     // interrupts::enable();
 
     let ptr = kmalloc(core::mem::size_of::<usize>());
-    // let ptr2 = kmalloc(core::mem::size_of::<usize>());
-    print_serial!("FREE\n");
+    let ptr2 = kmalloc(core::mem::size_of::<usize>());
     kfree(ptr);
 
     print_memory_list();

@@ -48,8 +48,6 @@ impl PageFrameAllocator {
         self.memory_start = round_to_nearest_page(multiboot_info.start_of_useable_memory());
         self.memory_end = round_to_nearest_page(multiboot_info.end_of_useable_memory());
 
-        print_serial!("start of memory is {:#X}\n", self.memory_start);
-
         self.free_page_frames = unsafe { Some(&mut *(self.memory_start as *mut FreeStack)) };
         self.current_page = self.memory_start + paging::PAGE_SIZE;
     }
@@ -59,72 +57,36 @@ impl PageFrameAllocator {
        Else return the address of the current page and increment
     */
     pub fn alloc_page_frame(&mut self) -> Option<*mut usize> {
-        // if self
-        //     .free_page_frames
-        //     .as_mut()
-        //     .expect("Shouldn't be none")
-        //     .is_empty()
-        // {
-        //     // Check if over memory limit
-        //     let address = self.current_page;
-
-        //     if address > self.memory_end {
-        //         print_serial!("how are we over the limit?\n");
-        //         return None;
-        //     } else {
-        //         self.current_page += paging::PAGE_SIZE;
-        //         return Some(self.current_page as *mut usize);
-        //     }
-        // } else {
-        //     match self
-        //         .free_page_frames
-        //         .as_mut()
-        //         .expect("Shouldn't be none")
-        //         .pop()
-        //     {
-        //         Some(page_frame) => unsafe {
-        //             return Some((*page_frame).get_address() as *mut usize);
-        //         },
-        //         None => {
-        //             print_serial!("yo\n");
-        //             None
-        //         }
-        //     }
-        // }
-
-        // Check if over memory limit
-        let address = self.current_page;
-
-        if address > self.memory_end {
-            print_serial!("how are we over the limit?\n");
-            return None;
-        } else {
-            self.current_page += paging::PAGE_SIZE;
-            return Some(self.current_page as *mut usize);
+        if let Some(free_frames) = self.free_page_frames.as_mut() {
+            if let Some(page_frame) = free_frames.pop() {
+                unsafe {
+                    return Some((*page_frame).get_address() as *mut usize);
+                }
+            } else if (self.current_page < self.memory_end) {
+                self.current_page += paging::PAGE_SIZE;
+                return Some(self.current_page as *mut usize);
+            }
         }
+
+        None
     }
 
     // Add the address of the free'd page to the stack
     pub unsafe fn free_page_frame(&mut self, frame_address: *mut usize) {
         // Need to zero out the page for safety
-        let max_offset = PAGE_SIZE / 8;
-
-        for i in 0..max_offset {
-            unsafe {
-                *frame_address.offset(i as isize) = 0;
-            }
+        unsafe {
+            core::ptr::write_bytes(frame_address as *mut u8, 0, PAGE_SIZE);
         }
 
         let new_free_frame = unsafe { &mut *(frame_address as *mut PageFrame) };
 
-        // TODO: Clear all data within the page frame
         self.free_page_frames
             .as_mut()
             .expect("Shouldn't be none")
             .push(new_free_frame);
     }
 
-    // Allocates a continuous amount of pages subsequently
+    // Allocates a continuous amount of pages sequentially
     pub fn alloc_page_frames(&mut self, pages_required: usize) -> *mut usize {
         let address = self.current_page + paging::PAGE_SIZE;
         for _i in 0..pages_required {
@@ -148,28 +110,18 @@ impl FreeStack {
     }
 
     pub fn is_empty(&self) -> bool {
-        // print_serial!("the length is {}\n", self.length);
         return self.length == 0;
     }
 
-    // TODO: Might want to refactor!?
     pub fn pop(&mut self) -> Option<*mut PageFrame> {
-        match self.length {
-            0 => None,
-            1 => {
-                let temp_frame = self.top;
-                self.top = None;
-                return temp_frame;
+        if let Some(cloned_top) = self.top {
+            unsafe {
+                self.top = (*cloned_top).next;
             }
-            _ => unsafe {
-                if let Some(cloned_top) = self.top {
-                    self.top = (*cloned_top).next;
-                    return Some(cloned_top);
-                }
-
-                return None;
-            },
+            return Some(cloned_top);
         }
+
+        None
     }
 
     pub unsafe fn push(&mut self, node: *mut PageFrame) {

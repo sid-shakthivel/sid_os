@@ -32,7 +32,7 @@ impl<T: Clone> PriorityQueue<T> {
 
     pub fn enqueue(&mut self, payload: T, priority: usize) {
         let priority_wrapped_node = PriorityWrapper::new(payload, priority);
-        let addr = kmalloc(core::mem::size_of::<PriorityWrapper<T>>()) as usize;
+        let addr = kmalloc(core::mem::size_of::<ListNode<PriorityWrapper<T>>>()) as usize;
 
         self.list.push_back(priority_wrapped_node, addr);
     }
@@ -45,9 +45,8 @@ impl<T: Clone> PriorityQueue<T> {
     // }
 
     pub fn get_head(&mut self) -> &mut T {
-        let value = self.list.head.expect("Head is undefined");
-        let best = unsafe { &mut (*value).payload.value };
-        return best;
+        let value = self.list.head.expect("ERROR: Queue is empty");
+        return unsafe { &mut (*value).payload.value };
     }
 }
 
@@ -61,39 +60,30 @@ impl<T: Clone> Queue<T> {
     }
 
     pub fn enqueue(&mut self, payload: T) {
-        // let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
-        let addr = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap() as usize;
-        PAGE_FRAME_ALLOCATOR.free();
+        let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
         self.list.push_back(payload, addr);
     }
 
-    pub fn dequeue(&mut self) -> T {
-        let ret = self
-            .list
-            .remove_at(self.list.length - 1)
-            .expect("Value expected when popping");
-        // kfree(ret.1);
-        ret.0
+    pub fn dequeue(&mut self) -> Option<T> {
+        self.list.remove_at(0).map(|node| {
+            kfree(node.1);
+            node.0
+        })
     }
 
     pub fn empty(&mut self) {
-        while self.list.head.is_some() {
-            self.dequeue();
-        }
+        while self.dequeue().is_some() {}
     }
 
-    pub fn get_element(&mut self, target_index: usize) -> Option<(usize, T)> {
-        // for (index, node) in self.list.into_iter().enumerate() {
-        //     if (index == target_index) {
-        //         return Some((index, node.unwrap().payload.clone()));
-        //     }
-        // }
-        None
+    pub fn get_element(&mut self, index: usize) -> &mut T {
+        return self
+            .list
+            .get_at(index)
+            .expect("ERROR: Queue does not contain element at specified index");
     }
 
     pub fn get_head(&mut self) -> &mut T {
-        let value = self.list.head.expect("Head is undefined");
-        let best = unsafe { &mut (*value).payload };
-        return best;
+        let value = self.list.head.expect("ERROR: Queue is empty");
+        return unsafe { &mut (*value).payload };
     }
 }

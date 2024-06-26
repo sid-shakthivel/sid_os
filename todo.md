@@ -9,8 +9,6 @@ Remember:
 
 Now:
 - Refactor the queue
-- Refactor the stack
-- The allocator may still be slightly broken
 - Allow for both kernel and user tasks (inheritance)
 
 Refactoring

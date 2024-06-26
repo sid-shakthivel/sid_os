@@ -55,35 +55,26 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
 
     match wrapped_memory_block {
         Some(memory_block) => {
+            // Remove old memory block from list
+            FREE_MEMORY_BLOCK_LIST.lock().remove_at(index);
+            FREE_MEMORY_BLOCK_LIST.free();
+
+            let node_addr = memory_block.data;
+            let header_addr = get_base_address(node_addr);
+
+            let new_node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
+
+            let dp = create_new_memory_block(size, header_addr, false);
+
             // If block is larger then memory required, split region and add second part to list
             if memory_block.size > size {
-                // Remove old memory block from list
-                FREE_MEMORY_BLOCK_LIST.lock().remove_at(index);
-                FREE_MEMORY_BLOCK_LIST.free();
-
-                let node_addr = memory_block.data;
-                let header_addr = get_base_address(node_addr);
-
-                let new_node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
-
-                let dp = create_new_memory_block(size, header_addr, false);
-
                 // Add remaining section of block
                 let new_free_node_addr =
                     unsafe { (header_addr as *mut u8).offset(size as isize) as *mut usize };
                 create_new_memory_block(memory_block.size - size, new_free_node_addr, true);
-
-                return node_addr;
-            } else {
-                // TODO: Check this soon
-
-                panic!("should not be here");
-
-                FREE_MEMORY_BLOCK_LIST.lock().remove_at(index);
-                FREE_MEMORY_BLOCK_LIST.free();
-
-                return memory_block.data;
             }
+
+            return dp;
         }
         None => {
             // No memory blocks can be found, thus must allocate more memory according to how many bytes needed
@@ -115,26 +106,26 @@ pub fn kfree(dp: *mut usize) {
     // Add block to list of free blocks (to the front)
     FREE_MEMORY_BLOCK_LIST
         .lock()
-        .push_back(memory_block, header_addr as usize);
+        .push_front(memory_block, header_addr as usize);
     FREE_MEMORY_BLOCK_LIST.free();
 
     let updated_node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
 
     // Check next node to merge memory regions together to alleviate fragmentation
 
-    if let Some(prev_node) = updated_node.prev {
-        // Update the size of the previous node
-        unsafe {
-            (*prev_node).payload.size += updated_node.payload.size;
-        }
+    // if let Some(prev_node) = updated_node.prev {
+    //     // Update the size of the previous node
+    //     unsafe {
+    //         (*prev_node).payload.size += updated_node.payload.size;
+    //     }
 
-        // Remove last node
-        let length = FREE_MEMORY_BLOCK_LIST.lock().length;
-        FREE_MEMORY_BLOCK_LIST.free();
+    //     // Remove last node
+    //     let length = FREE_MEMORY_BLOCK_LIST.lock().length();
+    //     FREE_MEMORY_BLOCK_LIST.free();
 
-        FREE_MEMORY_BLOCK_LIST.lock().remove_at(length - 1);
-        FREE_MEMORY_BLOCK_LIST.free();
-    }
+    //     FREE_MEMORY_BLOCK_LIST.lock().remove_at(length - 1);
+    //     FREE_MEMORY_BLOCK_LIST.free();
+    // }
 }
 
 /*
