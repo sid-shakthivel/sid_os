@@ -18,7 +18,7 @@ impl<T> ListNode<T> {
     ) {
         self.payload = payload;
         self.prev = prev;
-        self.next = next;
+        self.next = next
     }
 }
 

@@ -4,12 +4,33 @@ use crate::memory::{
     page_frame_allocator::PAGE_FRAME_ALLOCATOR,
     paging::PAGE_SIZE,
 };
+use core::cmp::Ordering;
 
 // A wrapper to add priority to any type
 #[derive(Clone, Copy)]
 struct PriorityWrapper<T> {
     priority: usize,
     value: T,
+}
+
+impl<T> Ord for PriorityWrapper<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.priority.cmp(&self.priority)
+    }
+}
+
+impl<T> PartialOrd for PriorityWrapper<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T> Eq for PriorityWrapper<T> {}
+
+impl<T> PartialEq for PriorityWrapper<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.priority == other.priority
+    }
 }
 
 impl<T> PriorityWrapper<T> {
