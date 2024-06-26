@@ -8,9 +8,8 @@ Remember:
 ```
 
 Now:
-- Can potentially refactor due to null_mut
-- Make a dynamic array
 - Refactor the priority queue
+- Spellings
 - Allow for both kernel and user tasks (inheritance)
 
 Refactoring

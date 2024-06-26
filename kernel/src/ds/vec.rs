@@ -9,12 +9,16 @@ pub struct DynamicArray<T> {
 }
 
 impl<T> DynamicArray<T> {
-    pub fn new() -> DynamicArray<T> {
+    pub const fn new() -> DynamicArray<T> {
         DynamicArray::<T> {
-            data: kmalloc(DynamicArray::<T>::calculate_capacity(DEFAULT_SIZE)) as *mut T,
+            data: core::ptr::null_mut(),
             capacity: DEFAULT_SIZE,
             length: 0,
         }
+    }
+
+    pub fn init(&mut self) {
+        self.data = kmalloc(DynamicArray::<T>::calculate_capacity(DEFAULT_SIZE)) as *mut T;
     }
 
     pub fn push(&mut self, element: T) {
@@ -41,6 +45,17 @@ impl<T> DynamicArray<T> {
         self.length += 1;
     }
 
+    pub fn swap(&mut self, index1: usize, index2: usize) {
+        unsafe {
+            let temp = core::ptr::read(self.data.add(index1));
+            core::ptr::write(
+                self.data.add(index1),
+                core::ptr::read(self.data.add(index2)),
+            );
+            core::ptr::write(self.data.add(index2), temp);
+        }
+    }
+
     pub fn empty(&mut self) {
         unsafe {
             core::ptr::write_bytes(
@@ -59,6 +74,15 @@ impl<T> DynamicArray<T> {
         self.length
     }
 
+    pub fn pop(&mut self) -> Option<T> {
+        if self.length > 0 {
+            self.length -= 1;
+            unsafe { Some(core::ptr::read(self.data.add(self.length))) }
+        } else {
+            None
+        }
+    }
+
     fn calculate_capacity(size: usize) -> usize {
         core::mem::size_of::<T>() * size
     }
@@ -71,4 +95,3 @@ impl<T> DynamicArray<T> {
         }
     }
 }
-

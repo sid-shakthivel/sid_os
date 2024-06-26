@@ -1,4 +1,5 @@
 use super::list::{List, ListIterator, ListNode};
+use super::vec::DynamicArray;
 use crate::memory::{
     allocator::{kfree, kmalloc},
     page_frame_allocator::PAGE_FRAME_ALLOCATOR,
@@ -42,37 +43,98 @@ impl<T> PriorityWrapper<T> {
     }
 }
 
+/*
+    Priority Queue uses a binary heap (min-heap)
+    This ensures every parent node is less than or equal to its child nodes
+*/
 pub struct PriorityQueue<T: 'static> {
-    pub list: List<PriorityWrapper<T>>,
+    pub nodes: DynamicArray<PriorityWrapper<T>>,
 }
 
 impl<T: Clone> PriorityQueue<T> {
     pub const fn new() -> PriorityQueue<T> {
-        PriorityQueue { list: List::new() }
+        PriorityQueue {
+            nodes: DynamicArray::new(),
+        }
+    }
+
+    pub fn init(&mut self) {
+        self.nodes.init();
     }
 
     pub fn enqueue(&mut self, payload: T, priority: usize) {
         let priority_wrapped_node = PriorityWrapper::new(payload, priority);
-        let addr = kmalloc(core::mem::size_of::<ListNode<PriorityWrapper<T>>>()) as usize;
-
-        self.list.push_back(priority_wrapped_node, addr);
+        self.nodes.push(priority_wrapped_node);
+        self.swim();
     }
 
-    // pub fn dequeue(&mut self) -> T {
-    //     let ret =self
-    //         .list
-    //         .remove_at(self.list.length)
-    //         .expect("Value expected when dequeing")
-    // }
+    pub fn swim(&mut self) {
+        let mut index = self.nodes.length() - 1;
+        while index > 0 {
+            let parent = (index - 1) / 2;
+            if self.nodes.get(index) > self.nodes.get(parent) {
+                self.nodes.swap(index, parent);
+                index = parent;
+            } else {
+                break;
+            }
+        }
+    }
 
-    pub fn get_head(&mut self) -> &mut T {
-        let value = self.list.head.expect("ERROR: Queue is empty");
-        return unsafe { &mut (*value).payload.value };
+    pub fn dequeue(&mut self) -> Option<T> {
+        if self.nodes.is_empty() {
+            return None;
+        }
+
+        self.nodes.swap(0, self.nodes.length() - 1);
+        let wrapper = self.nodes.pop().expect("Priority Queue is empty");
+        self.sink(0);
+
+        return Some(wrapper.value);
+    }
+
+    pub fn sink(&mut self, mut index: usize) {
+        let len = self.nodes.length();
+        let mut left = 2 * index + 1;
+
+        while left < len {
+            let right = left + 1;
+            let largest = if right < len && self.nodes.get(right) > self.nodes.get(left) {
+                right
+            } else {
+                left
+            };
+
+            if self.nodes.get(largest) > self.nodes.get(0) {
+                self.nodes.swap(largest, index);
+                index = largest;
+                left = 2 * index + 1;
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub fn peek(&mut self) -> &mut T {
+        let node = self.nodes.get(0).expect("Priority Queue is empty") as *mut PriorityWrapper<T>;
+
+        unsafe {
+            let node_value_mut = &mut ((*node).value) as *mut T;
+            return &mut *node_value_mut;
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.nodes.length()
     }
 }
 
 pub struct Queue<T: 'static> {
-    pub list: List<T>,
+    list: List<T>,
 }
 
 impl<T: Clone> Queue<T> {
@@ -103,7 +165,7 @@ impl<T: Clone> Queue<T> {
             .expect("ERROR: Queue does not contain element at specified index");
     }
 
-    pub fn get_head(&mut self) -> &mut T {
+    pub fn peek(&mut self) -> &mut T {
         let value = self.list.head.expect("ERROR: Queue is empty");
         return unsafe { &mut (*value).payload };
     }

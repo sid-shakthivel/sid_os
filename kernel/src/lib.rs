@@ -33,6 +33,7 @@ use core::mem;
 use core::panic::PanicInfo;
 use core::prelude::v1;
 
+use multitask::ProcessManager;
 use spin::Lazy;
 use spinning_top::Spinlock;
 
@@ -77,6 +78,9 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     // gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
 
     // grub::initalise_userland(multiboot_info);
+
+    PROCESS_MANAGER.lock().init();
+    PROCESS_MANAGER.free();
 
     interrupts::init();
 
