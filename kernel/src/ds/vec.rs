@@ -1,6 +1,9 @@
 const DEFAULT_SIZE: usize = 50;
 
-use crate::memory::allocator::{kfree, kmalloc};
+use crate::{
+    memory::allocator::{kfree, kmalloc},
+    print_serial,
+};
 
 pub struct DynamicArray<T> {
     data: *mut T,

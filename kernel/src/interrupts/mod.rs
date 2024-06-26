@@ -22,7 +22,6 @@ use crate::interrupts::idt::IDTR;
 use crate::interrupts::idt::IDT_MAX_DESCRIPTIONS;
 use crate::memory::gdt::TSS;
 use crate::multitask::syscalls::syscall_handler;
-use crate::multitask::ProcessManager;
 use crate::multitask::PROCESS_MANAGER;
 use crate::print_serial;
 use crate::setup_exception_with_e_handler;

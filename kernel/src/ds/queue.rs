@@ -5,6 +5,7 @@ use crate::memory::{
     page_frame_allocator::PAGE_FRAME_ALLOCATOR,
     paging::PAGE_SIZE,
 };
+use crate::print_serial;
 use core::cmp::Ordering;
 
 // A wrapper to add priority to any type

@@ -7,10 +7,9 @@ Remember:
     let val = unsafe { ptr.read_unaligned() };
 ```
 
-Now:
-- Refactor the priority queue
+Now: 
 - Spellings
-- Allow for both kernel and user tasks (inheritance)
+- Sleep syscall thing
 
 Refactoring
 - PS2 Mouse Things

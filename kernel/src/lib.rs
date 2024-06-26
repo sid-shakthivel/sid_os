@@ -33,7 +33,6 @@ use core::mem;
 use core::panic::PanicInfo;
 use core::prelude::v1;
 
-use multitask::ProcessManager;
 use spin::Lazy;
 use spinning_top::Spinlock;
 
@@ -74,13 +73,13 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     PAGE_FRAME_ALLOCATOR.lock().init(&multiboot_info);
     PAGE_FRAME_ALLOCATOR.free();
 
+    PROCESS_MANAGER.lock().init();
+    PROCESS_MANAGER.free();
+
     // grub::bga_set_video_mode();
     // gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
 
-    // grub::initalise_userland(multiboot_info);
-
-    PROCESS_MANAGER.lock().init();
-    PROCESS_MANAGER.free();
+    grub::initalise_userland(multiboot_info);
 
     interrupts::init();
 
@@ -90,13 +89,7 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     interrupts::pic::PICS.lock().init();
     interrupts::pic::PICS.free();
 
-    // interrupts::enable();
-
-    let ptr = kmalloc(core::mem::size_of::<usize>());
-    let ptr2 = kmalloc(core::mem::size_of::<usize>());
-    kfree(ptr);
-
-    print_memory_list();
+    interrupts::enable();
 
     print_serial!("Finished Execution\n");
 

@@ -32,13 +32,14 @@ const VBE_DISPI_INDEX_X_OFFSET: u16 = 8;
 const VBE_DISPI_INDEX_Y_OFFSET: u16 = 9;
 const VBE_DISPI_LFB_ENABLED: u16 = 0x40;
 
+/*
+    All usermode processes are grub modules
+*/
 pub fn initalise_userland(multiboot_info: &MultibootBootInfo) {
-    for tag in multiboot_info.get_module_tags() {
-        PROCESS_MANAGER.lock().add_process(
-            multitask::ProcessPriority::High,
-            0,
-            tag.mod_start as usize,
-        );
+    for (i, tag) in multiboot_info.get_module_tags().enumerate() {
+        PROCESS_MANAGER
+            .lock()
+            .add_process(true, i, tag.mod_start as usize);
         PROCESS_MANAGER.free();
     }
 }
