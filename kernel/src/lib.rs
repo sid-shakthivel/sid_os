@@ -33,26 +33,6 @@ use core::mem;
 use core::panic::PanicInfo;
 use core::prelude::v1;
 
-use spin::Lazy;
-use spinning_top::Spinlock;
-
-use ps2_mouse::{Mouse, MouseState};
-pub static MOUSE2: Lazy<Spinlock<Mouse>> = Lazy::new(|| Spinlock::new(Mouse::new()));
-
-fn init_mouse() {
-    MOUSE2.lock().init().unwrap();
-    MOUSE2.lock().set_on_complete(on_complete);
-}
-
-fn on_complete(mouse_state: MouseState) {
-
-    // WM.lock().handle_mouse_event(
-    //     (mouse_state.get_x(), mouse_state.get_y() * -1),
-    //     mouse_state.left_button_down(),
-    // );
-    // WM.free();
-}
-
 #[no_mangle]
 pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     interrupts::disable();
@@ -64,9 +44,6 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     CONSOLE.free();
 
     memory::gdt::init();
-    // dev::init();
-
-    // init_mouse();
 
     let multiboot_info = multiboot2::load(multiboot_info_addr, magic);
 
@@ -76,22 +53,22 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     PROCESS_MANAGER.lock().init();
     PROCESS_MANAGER.free();
 
+    interrupts::pit::PIT.lock().init();
+    interrupts::pit::PIT.free();
+
+    dev::init();
+
+    interrupts::init();
+
+    interrupts::pic::PICS.lock().init();
+    interrupts::pic::PICS.free();
+
     // grub::bga_set_video_mode();
     // gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
 
     grub::initalise_userland(multiboot_info);
 
-    interrupts::init();
-
-    interrupts::pit::PIT.lock().init();
-    interrupts::pit::PIT.free();
-
-    interrupts::pic::PICS.lock().init();
-    interrupts::pic::PICS.free();
-
     interrupts::enable();
-
-    print_serial!("Finished Execution\n");
 
     loop {}
 }

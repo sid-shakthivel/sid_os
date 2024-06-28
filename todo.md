@@ -8,11 +8,11 @@ Remember:
 ```
 
 Now: 
-- Spellings
-- Sleep syscall thing
+- PS2 Mouse Things
+
+for mouse will simply write code for both modes (not really using the extras)
 
 Refactoring
-- PS2 Mouse Things
 - Separate out the bitwise into a separate file (do once fix ps2)
 - Window manager stuff
 - Make a trait for paint etc
@@ -25,6 +25,7 @@ Bugs:
 
 New:
 - Continue syscalls
+- Sleep syscall thing
 - Switch
 
 Later:

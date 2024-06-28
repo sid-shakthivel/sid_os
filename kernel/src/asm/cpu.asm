@@ -1,7 +1,5 @@
 ; /src/cpu.asm
 
-extern interrupt_handler
-
 global inb_raw
 inb_raw:
   mov dx, di ; Address, first parameter

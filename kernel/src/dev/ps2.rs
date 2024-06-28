@@ -50,142 +50,119 @@ fn set_bit(value: u8, bitmask: u8) -> u8 {
 }
 
 pub fn init() -> Result<(), &'static str> {
-    // // Disable devices so ps2 devices can't mess up initialisation
-    // write(PS2_CMD, 0xAD)?;
-    // write(PS2_CMD, 0xA7)?;
+    // Disable devices so ps2 devices can't mess up initialisation
+    write(PS2_CMD, 0xAD)?;
+    write(PS2_CMD, 0xA7)?;
 
-    // // Flush output buffer as data can be stuck in PS2 controller buffer
-    // inb(PS2_DATA);
-
-    // write(PS2_CMD, 0x20)?;
-    // let mut controller_config = read(PS2_DATA)?;
-
-    // print_serial!("{:b}\n", controller_config);
-
-    // controller_config = remove_bit(
-    //     controller_config,
-    //     ControllerRegisterFlags::KeyboardInterruptEnable as u8,
-    // );
-
-    // controller_config = remove_bit(
-    //     controller_config,
-    //     ControllerRegisterFlags::MouseInterruptEnable as u8,
-    // );
-
-    // controller_config = remove_bit(
-    //     controller_config,
-    //     ControllerRegisterFlags::KeyboardTranlation as u8,
-    // );
-
-    // write(PS2_CMD, 0x60)?;
-    // write(PS2_DATA, controller_config)?;
-
-    // // Perform controller self test
-    // write(PS2_CMD, 0xAA)?; // Test controller
-    // if read(PS2_DATA)? != 0x55 {
-    //     panic!("Controller self test failed\n");
-    // }
-
-    // write(PS2_CMD, 0xA8)?; // Enable second PS2 port
-    // write(PS2_CMD, 0x20)?;
-
-    // controller_config = read(PS2_DATA)?;
-
-    // if (controller_config & ControllerRegisterFlags::MouseEnable as u8) > 0 {
-    //     panic!("Not dual channel???\n");
-    // } else {
-    //     write(PS2_CMD, 0xA7)?;
-    // }
-
-    // // Perform interface tests to test both ports
-    // write(PS2_CMD, 0xAB)?;
-    // if read(PS2_DATA)? != 0x00 {
-    //     panic!("Interface test failed\n");
-    // }
-
-    // write(PS2_CMD, 0xA9)?;
-    // if read(PS2_DATA)? != 0x00 {
-    //     panic!("Interface test failed\n");
-    // }
-
-    // // Enable both PS2 ports
-    // write(PS2_CMD, 0xAE)?;
-    // write(PS2_CMD, 0xA8)?;
-
-    // // Enable interrupts
-    // write(PS2_CMD, 0x20)?;
-    // controller_config = read(PS2_DATA)?;
-
-    // controller_config = set_bit(
-    //     controller_config,
-    //     ControllerRegisterFlags::KeyboardInterruptEnable as u8,
-    // );
-
-    // controller_config = set_bit(
-    //     controller_config,
-    //     ControllerRegisterFlags::MouseInterruptEnable as u8,
-    // );
-
-    // controller_config = set_bit(
-    //     controller_config,
-    //     ControllerRegisterFlags::KeyboardTranlation as u8,
-    // );
-
-    // print_serial!("{:b}\n", controller_config);
-
-    // write(PS2_CMD, 0x60)?;
-    // write(PS2_DATA, controller_config)?;
-
-    // Reset devices
-    // for i in 0..2 {
-    //     write_to_device(i, 0xFF)?;
-    //     let response = read(PS2_DATA)?;
-
-    //     if response != 0xFA && response != 0xaa && read(PS2_DATA)? != 0xAA {
-    //         panic!("Reading device {} failed with {:x}", i, response);
-    //     }
-
-    //     // Mouse can send an extra 0x00 byte
-    //     if (inb(PS2_STATUS) & 1) != 0 {
-    //         read(PS2_DATA)?;
-    //     }
-    // }
-
-    // Identify devices and initialise them appropriately
-    // for i in 0..2 {
-    //     match identify_device_type(i).unwrap() {
-    //         PS2Device::MF2KeyboardTranslation => {
-    //             KEYBOARD.lock().init();
-    //             KEYBOARD.free();
-    //         }
-    //         PS2Device::PS2Mouse => {
-    //             // MOUSE.lock().init();
-    //             // MOUSE.free();
-    //         }
-    //         _ => panic!("Unknown device"),
-    //     }
-    // }
-
-    // Setup mouse (properly)
-    // self.write_command_port(GET_STATUS_BYTE)?;
-    // let status = self.read_data_port()? | 0x02;
-    // self.write_command_port(SET_STATUS_BYTE)?;
-    // self.write_data_port(status & 0xDF)?;
-    // self.send_command(Command::SetDefaults)?;
-    // self.send_command(Command::EnablePacketStreaming)?;
+    // Flush output buffer as data can be stuck in PS2 controller buffer
+    inb(PS2_DATA);
 
     write(PS2_CMD, GET_STATUS_BYTE)?;
-    let status = read(PS2_DATA)? | 0x02 | 0x01;
+    let mut controller_config = read(PS2_DATA)?;
+
+    controller_config = remove_bit(
+        controller_config,
+        ControllerRegisterFlags::KeyboardInterruptEnable as u8,
+    );
+
+    controller_config = remove_bit(
+        controller_config,
+        ControllerRegisterFlags::MouseInterruptEnable as u8,
+    );
+
+    controller_config = remove_bit(
+        controller_config,
+        ControllerRegisterFlags::KeyboardTranlation as u8,
+    );
+
     write(PS2_CMD, SET_STATUS_BYTE)?;
-    write(PS2_DATA, status & 0xDF)?;
-    write_to_device(1, 0xF6)?;
-    write_to_device(1, 0xF4)?;
+    write(PS2_DATA, controller_config)?;
 
-    KEYBOARD.lock().init();
-    KEYBOARD.free();
+    // Perform controller self test
+    write(PS2_CMD, 0xAA)?; // Test controller
+    if read(PS2_DATA)? != 0x55 {
+        panic!("Controller self test failed\n");
+    }
 
-    MOUSE.lock().init();
-    MOUSE.free();
+    write(PS2_CMD, 0xA8)?; // Enable second PS2 port
+    write(PS2_CMD, GET_STATUS_BYTE)?;
+
+    controller_config = read(PS2_DATA)?;
+
+    if (controller_config & ControllerRegisterFlags::MouseEnable as u8) > 0 {
+        panic!("Not dual channel???\n");
+    } else {
+        write(PS2_CMD, 0xA7)?;
+    }
+
+    // Perform interface tests to test both ports
+    write(PS2_CMD, 0xAB)?;
+    if read(PS2_DATA)? != 0x00 {
+        panic!("Interface test failed\n");
+    }
+
+    write(PS2_CMD, 0xA9)?;
+    if read(PS2_DATA)? != 0x00 {
+        panic!("Interface test failed\n");
+    }
+
+    // Enable both PS2 ports
+    write(PS2_CMD, 0xAE)?;
+    write(PS2_CMD, 0xA8)?;
+
+    // Enable interrupts
+    write(PS2_CMD, GET_STATUS_BYTE)?;
+    controller_config = read(PS2_DATA)?;
+
+    controller_config = set_bit(
+        controller_config,
+        ControllerRegisterFlags::KeyboardInterruptEnable as u8,
+    );
+
+    controller_config = set_bit(
+        controller_config,
+        ControllerRegisterFlags::MouseInterruptEnable as u8,
+    );
+
+    controller_config = set_bit(
+        controller_config,
+        ControllerRegisterFlags::KeyboardTranlation as u8,
+    );
+
+    write(PS2_CMD, SET_STATUS_BYTE)?;
+    write(PS2_DATA, controller_config)?;
+
+    // Reset devices
+    for i in 0..2 {
+        write_to_device(i, 0xFF)?;
+        let response = read(PS2_DATA)?;
+
+        if response != 0xFA || read(PS2_DATA)? != 0xAA {
+            panic!("Reading device {} failed with {:x}", i, response);
+        }
+
+        // Mouse can send an extra 0x00 byte
+        if (inb(PS2_STATUS) & 1) != 0 {
+            read(PS2_DATA)?;
+        }
+    }
+
+    // Identify devices and initialise them appropriately
+    for i in 0..2 {
+        match identify_device_type(i).unwrap() {
+            PS2Device::MF2KeyboardTranslation => {
+                KEYBOARD.lock().init();
+                KEYBOARD.free();
+            }
+            PS2Device::PS2Mouse => {
+                MOUSE.lock().init();
+                MOUSE.free();
+            }
+            _ => panic!("Unknown device"),
+        }
+    }
+
+    print_serial!("here\n");
 
     Ok(())
 }
@@ -229,11 +206,6 @@ pub fn write_to_device(device_num: u16, byte: u8) -> Result<u8, &'static str> {
         1 => {
             write(PS2_CMD, 0xD4)?;
             write(PS2_DATA, byte)?;
-            let ret = read(PS2_DATA)?;
-            if (ret != 0xFA) {
-                print_serial!("Issue\n");
-                return Err("Mouse didn't respond");
-            }
             return Ok(0);
         }
         _ => Err("Unknown device"),
@@ -266,6 +238,9 @@ pub fn identify_device_type(device_num: u16) -> Result<PS2Device, &'static str> 
                 _ => Err("Unknown device"),
             };
         }
-        _ => Err("Unknown device"),
+        _ => {
+            print_serial!("Unknown device response: {:x}\n", response);
+            Err("Unknown device\n")
+        }
     };
 }

@@ -26,3 +26,4 @@ extern "C" {
     fn outpw_raw(port: u16, value: u16);
     fn inpw_raw(port: u16) -> u16;
 }
+

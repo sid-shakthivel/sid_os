@@ -6,8 +6,8 @@
 */
 
 use super::ps2;
+use crate::print_serial;
 use crate::utils::spinlock::Lock;
-use crate::{print_serial};
 
 pub struct Keyboard {
     is_upper: bool,
@@ -27,6 +27,9 @@ impl Keyboard {
         if self.scancode_set != self.get_scancode_set() {
             self.scancode_set = self.get_scancode_set();
         }
+
+        print_serial!("{:?}\n", self.scancode_set);
+
         self.enable_scanning();
     }
 
@@ -54,8 +57,6 @@ impl Keyboard {
 
             match scancode {
                 0x26 => {
-                    // WINDOW_MANAGER.lock().handle_keyboard('l', 0x26);
-                    // WINDOW_MANAGER.free();
                     print_serial!("l");
                 }
                 0x2A => self.is_upper = true,  // Left shift pressed
@@ -68,8 +69,6 @@ impl Keyboard {
 
                     // Check for letter or enter key
                     if scancode == 0x1c || letter != '0' {
-                        // WINDOW_MANAGER.lock().handle_keyboard(letter, scancode);
-                        // WINDOW_MANAGER.free();
                         print_serial!("{}", letter);
                     }
                 }

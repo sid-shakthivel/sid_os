@@ -149,28 +149,20 @@ pub extern "C" fn test_syscall_handler(stack_frame: &InterruptStackFrame) -> isi
 }
 
 pub extern "C" fn interrupt_handler(stack_frame: &InterruptStackFrame, interrupt_id: usize) {
+    PICS.lock().acknowledge(interrupt_id as u8);
+    PICS.free();
+
     match interrupt_id {
         0x21 => {
             KEYBOARD.lock().handle_keyboard();
             KEYBOARD.free();
         }
         0x2c => {
-            // MOUSE.lock().handle_mouse_interrupt();
-            // MOUSE.free();
-
-            use crate::MOUSE2;
-
-            let packet = inb(0x60);
-            MOUSE2.lock().process_packet(packet);
-        }
-        0x80 => {
-            syscall_handler(stack_frame);
+            MOUSE.lock().handle_mouse_interrupt();
+            MOUSE.free();
         }
         _ => {}
     }
-
-    PICS.lock().acknowledge(interrupt_id as u8);
-    PICS.free();
 }
 
 pub extern "C" fn exception_with_error_handler(

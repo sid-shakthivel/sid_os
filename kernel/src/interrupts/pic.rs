@@ -16,6 +16,7 @@
     +------+-------------+------+-----------------+
 */
 
+use crate::print_serial;
 use crate::utils::ports::inb;
 use crate::utils::ports::io_wait;
 use crate::utils::ports::outb;
@@ -86,7 +87,10 @@ impl ChainedPics {
 
         // f9 - kbd, slave, f8 - kbd, slave, pit, fd - kbd
         // ef - mouse, ff - completely disable
-        outb(self.master.data, 0xf8);
+
+        // print_serial!("{} {}\n", self.master.data, self.slave.data);
+
+        outb(self.master.data, 0xf9);
         outb(self.slave.data, 0xef);
         io_wait();
     }

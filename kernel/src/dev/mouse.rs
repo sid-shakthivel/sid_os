@@ -47,17 +47,18 @@ pub struct Mouse {
 }
 
 impl Mouse {
+    /*
+       It should be noted that placing a self.get_type() after self.enable_scanning();
+       Will result in the mouse not working at all
+       Do not do this
+    */
     pub fn init(&mut self) {
-        // self.enable_z_axis();
-        // self.enable_5_buttons();
-        // self.enable_scanning();
+        self.enable_z_axis();
+        self.enable_5_buttons();
 
-        // print_serial!("Mouse Type: {:?}\n", self.get_type());
+        print_serial!("{:?}\n", self.get_type());
 
-        // assert!(
-        //     self.get_type() == ps2::PS2Device::PS2MouseFiveButtons,
-        //     "Mouse: Is not PS2 MouseFiveButtons"
-        // );
+        self.enable_scanning();
     }
 
     pub fn handle_mouse_interrupt(&mut self) {
@@ -121,10 +122,6 @@ impl Mouse {
             let adjusted_y = (self.mouse_packets[2] as i16) * -1;
             self.mouse_y = self.mouse_y.wrapping_add(adjusted_y as usize);
         }
-
-        // WM.lock()
-        //     .handle_mouse_event((self.mouse_x as u16, self.mouse_y as u16), is_left_clicked);
-        // WM.free();
     }
 
     fn enable_scanning(&self) {
@@ -142,6 +139,7 @@ impl Mouse {
         self.set_mouse_rate(200);
         self.set_mouse_rate(100);
         self.set_mouse_rate(80);
+
         if self.get_type() != ps2::PS2Device::PS2MouseScrollWheel {
             panic!("Scroll wheel failed");
         } else {
