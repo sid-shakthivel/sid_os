@@ -14,12 +14,12 @@
 */
 
 use super::ps2;
-// use crate::gfx::wm::WM;
-use crate::print_serial;
+use crate::utils::bitwise;
 use crate::utils::spinlock::Lock;
+use crate::{panic, print_serial};
 
 #[repr(u8)]
-enum MouseByte1Bits {
+enum GenericPacketBits {
     LeftBtnClicked = 0b00000001,
     RightBtnClicked = 0b00000010,
     MidBtnClicked = 0b00000100,
@@ -30,20 +30,20 @@ enum MouseByte1Bits {
     YOverflow = 0b10000000,
 }
 
-#[derive(PartialEq)]
-pub enum MouseState {
-    Up,
-    Down,
-    Immobile,
+#[repr(u8)]
+enum Button5MouseZAxisBits {
+    Value = 0x0F,
+    AdditionalButtonA = 0b00010000,
+    AdditionalButtonB = 0b00100000,
 }
 
 pub struct Mouse {
-    mouse_x: usize,
-    mouse_y: usize,
-    mouse_packets: [u8; 4],
+    x: usize,
+    y: usize,
+    z: usize,
+    flags: u8,
     current_byte: usize,
     variety: ps2::PS2Device,
-    mouse_state: MouseState,
 }
 
 impl Mouse {
@@ -54,7 +54,7 @@ impl Mouse {
     */
     pub fn init(&mut self) {
         self.enable_z_axis();
-        self.enable_5_buttons();
+        // self.enable_5_buttons();
 
         print_serial!("{:?}\n", self.get_type());
 
@@ -62,66 +62,72 @@ impl Mouse {
     }
 
     pub fn handle_mouse_interrupt(&mut self) {
-        if ps2::is_from_mouse() {
-            let byte = ps2::read(0x60).unwrap();
+        if !ps2::is_from_mouse() {
+            return;
+        }
 
-            self.mouse_packets[self.current_byte] = byte;
+        let byte = ps2::read(0x60).unwrap();
 
-            self.current_byte = (self.current_byte + 1) % 4;
+        match self.current_byte {
+            0 => {
+                if !bitwise::contains_bit(byte, GenericPacketBits::IsFour as u8) {
+                    return;
+                }
 
-            if self.current_byte == 0 {
-                self.handle_mouse_packets();
+                if bitwise::contains_bit(byte, GenericPacketBits::LeftBtnClicked as u8) {
+                    print_serial!("Left Click\n");
+                }
+
+                if bitwise::contains_bit(byte, GenericPacketBits::RightBtnClicked as u8) {
+                    print_serial!("Right Click\n");
+                }
+
+                self.flags = byte;
             }
+            1 => {
+                if bitwise::contains_bit(self.flags, GenericPacketBits::XOverflow as u8) {
+                    return;
+                }
+
+                if bitwise::contains_bit(self.flags, GenericPacketBits::XSignBit as u8) {
+                    self.x = self.x.wrapping_add(self.sign_extend(byte) as usize);
+                } else {
+                    self.x = self.x.wrapping_add(byte as usize);
+                }
+            }
+            2 => {
+                if bitwise::contains_bit(self.flags, GenericPacketBits::YOverflow as u8) {
+                    return;
+                }
+
+                if bitwise::contains_bit(self.flags, GenericPacketBits::YSignBit as u8) {
+                    self.y = self.y.wrapping_add((self.sign_extend(byte) * -1) as usize);
+                } else {
+                    self.y = self.y.wrapping_add((byte as i16 * -1) as usize);
+                }
+            }
+            3 => match self.variety {
+                ps2::PS2Device::PS2Mouse => panic!("PS2 Mouse"),
+                ps2::PS2Device::PS2MouseFiveButtons => {
+                    self.z = (Button5MouseZAxisBits::Value as i16 & byte as i16) as usize;
+
+                    if bitwise::contains_bit(byte, Button5MouseZAxisBits::AdditionalButtonA as u8) {
+                        print_serial!("Button A Pressed\n");
+                    }
+
+                    if bitwise::contains_bit(byte, Button5MouseZAxisBits::AdditionalButtonB as u8) {
+                        print_serial!("Button B Pressed\n");
+                    }
+                }
+                ps2::PS2Device::PS2MouseScrollWheel => {
+                    self.z = self.z.wrapping_add((byte as i16) as usize);
+                }
+                _ => panic!("Unknown mouse type"),
+            },
+            _ => {}
         }
-    }
 
-    fn contains(&self, value: u8, bitmask: u8) -> bool {
-        (value & bitmask) > 0
-    }
-
-    fn handle_mouse_packets(&mut self) {
-        let mut is_left_clicked = false;
-
-        // Check overflows, if set, discard packet
-        if self.mouse_packets[0] & (1 << 7) >= 0x80 || self.mouse_packets[0] & (1 << 6) >= 0x40 {
-            return;
-        }
-
-        // Bit 3 verifies packet alignment (if wrong, should return error)
-        if self.mouse_packets[0] & (1 << 3) != 0x08 {
-            return;
-        }
-
-        // Left button pressed
-        if self.mouse_packets[0] & (1 << 0) == 1 {
-            print_serial!("Left button pressed\n");
-            is_left_clicked = true;
-            self.mouse_state = MouseState::Down;
-        } else {
-            self.mouse_state = MouseState::Up;
-        }
-
-        // Right button pressed
-        // if self.mouse_packets[0] & (1 << 1) == 2 {
-        //     return;
-        // }
-
-        // X movement and Y movement values must be read as a 9 bit or greater SIGNED value if bit is enabled
-        if self.mouse_packets[0] & (1 << 4) == 0x10 {
-            self.mouse_x = self
-                .mouse_x
-                .wrapping_add(self.sign_extend(self.mouse_packets[1]) as usize);
-        } else {
-            self.mouse_x = self.mouse_x.wrapping_add(self.mouse_packets[1] as usize);
-        }
-
-        if self.mouse_packets[0] & (1 << 5) == 0x20 {
-            let adjusted_y = self.sign_extend(self.mouse_packets[2]) * -1;
-            self.mouse_y = self.mouse_y.wrapping_add(adjusted_y as usize);
-        } else {
-            let adjusted_y = (self.mouse_packets[2] as i16) * -1;
-            self.mouse_y = self.mouse_y.wrapping_add(adjusted_y as usize);
-        }
+        self.current_byte = (self.current_byte + 1) % 4;
     }
 
     fn enable_scanning(&self) {
@@ -139,12 +145,6 @@ impl Mouse {
         self.set_mouse_rate(200);
         self.set_mouse_rate(100);
         self.set_mouse_rate(80);
-
-        if self.get_type() != ps2::PS2Device::PS2MouseScrollWheel {
-            panic!("Scroll wheel failed");
-        } else {
-            self.variety = self.get_type();
-        }
     }
 
     // Uses a magic sequence
@@ -154,8 +154,9 @@ impl Mouse {
         self.set_mouse_rate(80);
     }
 
-    fn get_type(&self) -> ps2::PS2Device {
-        return ps2::identify_device_type(1).unwrap();
+    fn get_type(&mut self) -> ps2::PS2Device {
+        self.variety = ps2::identify_device_type(1).unwrap();
+        return self.variety;
     }
 
     fn sign_extend(&self, packet: u8) -> i16 {
@@ -171,10 +172,10 @@ impl Mouse {
 }
 
 pub static MOUSE: Lock<Mouse> = Lock::new(Mouse {
-    mouse_x: 512,
-    mouse_y: 384,
-    mouse_packets: [0; 4],
+    x: 512,
+    y: 384,
+    z: 0,
+    flags: 0,
     current_byte: 0,
     variety: ps2::PS2Device::PS2Mouse,
-    mouse_state: MouseState::Immobile,
 });

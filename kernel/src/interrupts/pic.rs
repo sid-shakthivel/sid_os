@@ -88,8 +88,6 @@ impl ChainedPics {
         // f9 - kbd, slave, f8 - kbd, slave, pit, fd - kbd
         // ef - mouse, ff - completely disable
 
-        // print_serial!("{} {}\n", self.master.data, self.slave.data);
-
         outb(self.master.data, 0xf9);
         outb(self.slave.data, 0xef);
         io_wait();

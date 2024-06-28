@@ -9,6 +9,7 @@
 
 use super::keyboard::{Keyboard, KEYBOARD};
 use super::mouse::MOUSE;
+use crate::utils::bitwise;
 use crate::utils::ports::{inb, outb};
 use crate::{print_serial, CONSOLE};
 
@@ -32,21 +33,13 @@ enum ControllerRegisterFlags {
     IsUnused = 0b10000000,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub enum PS2Device {
     PS2Mouse,
     PS2MouseScrollWheel,
     PS2MouseFiveButtons,
     MF2Keyboard,
     MF2KeyboardTranslation,
-}
-
-fn remove_bit(value: u8, bitmask: u8) -> u8 {
-    value & !bitmask
-}
-
-fn set_bit(value: u8, bitmask: u8) -> u8 {
-    value | bitmask
 }
 
 pub fn init() -> Result<(), &'static str> {
@@ -60,17 +53,17 @@ pub fn init() -> Result<(), &'static str> {
     write(PS2_CMD, GET_STATUS_BYTE)?;
     let mut controller_config = read(PS2_DATA)?;
 
-    controller_config = remove_bit(
+    controller_config = bitwise::clear_bit(
         controller_config,
         ControllerRegisterFlags::KeyboardInterruptEnable as u8,
     );
 
-    controller_config = remove_bit(
+    controller_config = bitwise::clear_bit(
         controller_config,
         ControllerRegisterFlags::MouseInterruptEnable as u8,
     );
 
-    controller_config = remove_bit(
+    controller_config = bitwise::clear_bit(
         controller_config,
         ControllerRegisterFlags::KeyboardTranlation as u8,
     );
@@ -114,17 +107,17 @@ pub fn init() -> Result<(), &'static str> {
     write(PS2_CMD, GET_STATUS_BYTE)?;
     controller_config = read(PS2_DATA)?;
 
-    controller_config = set_bit(
+    controller_config = bitwise::set_bit(
         controller_config,
         ControllerRegisterFlags::KeyboardInterruptEnable as u8,
     );
 
-    controller_config = set_bit(
+    controller_config = bitwise::set_bit(
         controller_config,
         ControllerRegisterFlags::MouseInterruptEnable as u8,
     );
 
-    controller_config = set_bit(
+    controller_config = bitwise::set_bit(
         controller_config,
         ControllerRegisterFlags::KeyboardTranlation as u8,
     );

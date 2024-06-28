@@ -8,12 +8,12 @@ Remember:
 ```
 
 Now: 
-- PS2 Mouse Things
+- IPC with queues
+- Fix any potential memory leaks
 
 for mouse will simply write code for both modes (not really using the extras)
 
 Refactoring
-- Separate out the bitwise into a separate file (do once fix ps2)
 - Window manager stuff
 - Make a trait for paint etc
 - Want to switch to a userspace window manager
