@@ -1,5 +1,7 @@
 KERNEL = $(shell pwd)/kernel
 USERLAND_MODULE_1 = $(shell pwd)/userland/static
+USERLAND_MODULE_2 = $(shell pwd)/userland/libforth
+USERLAND_MODULE_3 = $(shell pwd)/userland/lua
 PROJECT_PATH = $(shell pwd)
 SYSCALLS = $(shell pwd)/userland/syscalls
 
@@ -15,11 +17,14 @@ all:
 	# cp res/fs.img isodir/modules
 
 	# Compile syscalls
-	# cd $(SYSCALLS) && make
+	cd $(SYSCALLS) && make
 
 	# Userspace modules
-	cd $(USERLAND_MODULE_1) && make
-	# docker run --rm -v $(PROJECT_PATH):/code sid_os/toolchain bash -c "cd code/userland/static && make all"
+	# cd $(USERLAND_MODULE_1) && make 
+
+	# cd $(USERLAND_MODULE_3) && make generic
+	# rm -f $(shell pwd)/isodir/modules/luac
+	# cp $(shell pwd)/userland/lua/src/luac $(shell pwd)/isodir/modules
 
 	# Kernel
 	cd $(KERNEL) && make run

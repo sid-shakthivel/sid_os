@@ -9,6 +9,7 @@
 use core::panic;
 
 use crate::{
+    gfx,
     multitask::{self, PROCESS_MANAGER},
     print_serial,
 };
@@ -37,10 +38,12 @@ const VBE_DISPI_LFB_ENABLED: u16 = 0x40;
 */
 pub fn initalise_userland(multiboot_info: &MultibootBootInfo) {
     for (i, tag) in multiboot_info.get_module_tags().enumerate() {
-        PROCESS_MANAGER
-            .lock()
-            .add_process(true, i, tag.mod_start as usize);
-        PROCESS_MANAGER.free();
+        // PROCESS_MANAGER
+        //     .lock()
+        //     .add_process(true, i, tag.mod_start as usize);
+        // PROCESS_MANAGER.free();
+
+        gfx::display_image(tag.mod_start as *const u8, tag.size as usize);
     }
 }
 

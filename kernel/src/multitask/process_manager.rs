@@ -37,12 +37,12 @@ impl ProcessManager {
             if let Some(mut process) = self.tasks.dequeue() {
                 let converted_priority = ProcessPriority::convert(process.priority);
                 process.rsp = old_rsp as *const usize;
+                // print_serial!("process: {:?}\n", process);
                 self.tasks.enqueue(process, converted_priority);
             }
         }
 
         if self.tasks.is_empty() {
-            print_serial!("this?\n");
             return old_rsp;
         } else {
             let next_process = self.tasks.peek();

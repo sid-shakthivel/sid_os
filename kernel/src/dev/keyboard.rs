@@ -28,7 +28,10 @@ impl Keyboard {
             self.scancode_set = self.get_scancode_set();
         }
 
-        print_serial!("{:?}\n", self.scancode_set);
+        assert!(
+            self.scancode_set == ScancodeSet::ScancodeSet2,
+            "Error:Scancode set is incorrect"
+        );
 
         self.enable_scanning();
     }

@@ -155,8 +155,6 @@ pub fn init() -> Result<(), &'static str> {
         }
     }
 
-    print_serial!("here\n");
-
     Ok(())
 }
 

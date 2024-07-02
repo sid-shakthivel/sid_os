@@ -7,13 +7,13 @@ use crate::memory::allocator::{kfree, print_memory_list};
 use crate::print_serial;
 use crate::utils::spinlock::Lock;
 
-const SCREEN_WIDTH: u16 = 1024;
-const SCREEN_HEIGHT: u16 = 768;
+// const SCREEN_WIDTH: u16 = 1024;
+// const SCREEN_HEIGHT: u16 = 768;
 
-const PITCH: u32 = 4096;
-const BPP: u32 = 32;
+// const PITCH: u32 = 4096;
+// const BPP: u32 = 32;
 
-const BACKGROUND_COLOUR: u32 = 0x3499fe;
+// const BACKGROUND_COLOUR: u32 = 0x3499fe;
 
 const MOUSE_WIDTH: u16 = 5;
 const MOUSE_HEIGHT: u16 = 5;

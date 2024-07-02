@@ -14,12 +14,16 @@ use crate::print_serial;
 pub fn syscall_handler(registers: &InterruptStackFrame) -> i64 {
     let syscall_id = registers.rax;
 
+    // print_serial!("{} {}\n", syscall_id, registers.rbx);
+    print_serial!("New Syscall\n");
+
     return match syscall_id {
         4 => isatty(registers.rbx),
         8 => allocate_pages(registers.rbx),
         9 => write(registers.rbx, registers.rcx as *mut u8, registers.rdx),
         _ => {
             print_serial!("Unknown syscall? {}\n", syscall_id);
+            panic!("");
             return 0;
         }
     };

@@ -56,7 +56,10 @@ impl Mouse {
         self.enable_z_axis();
         // self.enable_5_buttons();
 
-        print_serial!("{:?}\n", self.get_type());
+        assert!(
+            self.get_type() == ps2::PS2Device::PS2MouseScrollWheel,
+            "Error: Mouse does not have scroll wheel"
+        );
 
         self.enable_scanning();
     }
