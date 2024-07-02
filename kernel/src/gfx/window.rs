@@ -17,110 +17,110 @@ pub struct Window {
     pub height: u16,
 }
 
-// impl Window {
-//     pub const fn new(title: &'static str, x: u16, y: u16, width: u16, height: u16) -> Window {
-//         /*
-//            Must constrain areas which are updated to certain regions
-//            Windows consist of: title bar, main area, outline, text
-//         */
-//         Window {
-//             title,
-//             wid: 0,
-//             x,
-//             y,
-//             width,
-//             height,
-//         }
-//     }
+impl Window {
+    pub const fn new(title: &'static str, x: u16, y: u16, width: u16, height: u16) -> Window {
+        /*
+           Must constrain areas which are updated to certain regions
+           Windows consist of: title bar, main area, outline, text
+        */
+        Window {
+            title,
+            wid: 0,
+            x,
+            y,
+            width,
+            height,
+        }
+    }
 
-//     pub fn generate_rect(&self) -> Rect {
-//         Rect::new(self.y, self.y + self.height, self.x + self.width, self.x)
-//     }
+    pub fn generate_rect(&self) -> Rect {
+        Rect::new(self.y, self.y + self.height, self.x + self.width, self.x)
+    }
 
-//     pub fn paint_dirty(&self, dirty_rects: &mut Queue<Rect>, fb_addr: usize, font: &Font) {
-//         let mut rect = self.generate_rect();
+    pub fn paint_dirty(&self, dirty_rects: &mut Queue<Rect>, fb_addr: usize, font: &Font) {
+        let mut rect = self.generate_rect();
 
-//         // Title bar
-//         let constrained_area_1 = Rect::new(
-//             self.y + OUTLINE_SIZE,
-//             self.y + WINDOW_TITLE_HEIGHT + OUTLINE_SIZE,
-//             rect.right - OUTLINE_SIZE,
-//             self.x + OUTLINE_SIZE,
-//         );
+        // Title bar
+        let constrained_area_1 = Rect::new(
+            self.y + OUTLINE_SIZE,
+            self.y + WINDOW_TITLE_HEIGHT + OUTLINE_SIZE,
+            rect.right - OUTLINE_SIZE,
+            self.x + OUTLINE_SIZE,
+        );
 
-//         // Main area
-//         let constrained_area_2 = Rect::new(
-//             self.y + OUTLINE_SIZE + WINDOW_TITLE_HEIGHT,
-//             rect.bottom - OUTLINE_SIZE,
-//             rect.right - OUTLINE_SIZE,
-//             self.x + OUTLINE_SIZE,
-//         );
+        // Main area
+        let constrained_area_2 = Rect::new(
+            self.y + OUTLINE_SIZE + WINDOW_TITLE_HEIGHT,
+            rect.bottom - OUTLINE_SIZE,
+            rect.right - OUTLINE_SIZE,
+            self.x + OUTLINE_SIZE,
+        );
 
-//         let x_start = self.x + ((self.width / 2) - (self.title.as_bytes().len() as u16 * 8) / 2);
-//         let y_start = self.y + (WINDOW_TITLE_HEIGHT + OUTLINE_SIZE - 10) / 2;
+        let x_start = self.x + ((self.width / 2) - (self.title.as_bytes().len() as u16 * 8) / 2);
+        let y_start = self.y + (WINDOW_TITLE_HEIGHT + OUTLINE_SIZE - 10) / 2;
 
-//         for rect in dirty_rects.list.into_iter() {
-//             let rect = rect.unwrap().payload;
+        for rect in dirty_rects.list.into_iter() {
+            let rect = rect.payload;
 
-//             // Paint the outline
-//             rect.paint_rect_outline(WINDOW_BORDER_COLOUR, fb_addr, &rect);
+            // Paint the outline
+            rect.paint_rect_outline(WINDOW_BORDER_COLOUR, fb_addr, &rect);
 
-//             // Paint top title bar
-//             rect.paint_special(WINDOW_TITLE_COLOUR, fb_addr, &constrained_area_1);
+            // Paint top title bar
+            rect.paint_special(WINDOW_TITLE_COLOUR, fb_addr, &constrained_area_1);
 
-//             // Paint main area
-//             rect.paint_special(WINDOW_BACKGROUND_COLOUR, fb_addr, &constrained_area_2);
+            // Paint main area
+            rect.paint_special(WINDOW_BACKGROUND_COLOUR, fb_addr, &constrained_area_2);
 
-//             rect.paint_text(self.title, x_start, y_start, font, fb_addr);
-//         }
-//     }
+            rect.paint_text(self.title, x_start, y_start, font, fb_addr);
+        }
+    }
 
-//     pub fn paint(&self, above_windows: &mut Queue<Window>, fb_addr: usize, font: &Font) {
-//         let mut rect = self.generate_rect();
+    pub fn paint(&self, above_windows: &mut Queue<Window>, fb_addr: usize, font: &Font) {
+        let mut rect = self.generate_rect();
 
-//         // Title bar
-//         let constrained_area_1 = Rect::new(
-//             self.y + OUTLINE_SIZE,
-//             self.y + WINDOW_TITLE_HEIGHT + OUTLINE_SIZE,
-//             rect.right - OUTLINE_SIZE,
-//             self.x + OUTLINE_SIZE,
-//         );
+        // Title bar
+        let constrained_area_1 = Rect::new(
+            self.y + OUTLINE_SIZE,
+            self.y + WINDOW_TITLE_HEIGHT + OUTLINE_SIZE,
+            rect.right - OUTLINE_SIZE,
+            self.x + OUTLINE_SIZE,
+        );
 
-//         // Main area
-//         let constrained_area_2 = Rect::new(
-//             self.y + OUTLINE_SIZE + WINDOW_TITLE_HEIGHT,
-//             rect.bottom - OUTLINE_SIZE,
-//             rect.right - OUTLINE_SIZE,
-//             self.x + OUTLINE_SIZE,
-//         );
+        // Main area
+        let constrained_area_2 = Rect::new(
+            self.y + OUTLINE_SIZE + WINDOW_TITLE_HEIGHT,
+            rect.bottom - OUTLINE_SIZE,
+            rect.right - OUTLINE_SIZE,
+            self.x + OUTLINE_SIZE,
+        );
 
-//         let x_start = self.x + ((self.width / 2) - (self.title.as_bytes().len() as u16 * 8) / 2);
-//         let y_start = self.y + (WINDOW_TITLE_HEIGHT + OUTLINE_SIZE - 10) / 2;
+        let x_start = self.x + ((self.width / 2) - (self.title.as_bytes().len() as u16 * 8) / 2);
+        let y_start = self.y + (WINDOW_TITLE_HEIGHT + OUTLINE_SIZE - 10) / 2;
 
-//         let mut clipped_rects = Queue::<Rect>::new();
-//         clipped_rects.enqueue(rect);
+        let mut clipped_rects = Queue::<Rect>::new();
+        clipped_rects.enqueue(rect);
 
-//         for window in above_windows.list.into_iter() {
-//             let clipping_rect = window.unwrap().payload.clone().generate_rect();
-//             Rect::split_rects(&mut clipped_rects, &clipping_rect);
-//         }
+        for window in above_windows.list.into_iter() {
+            let clipping_rect = window.payload.generate_rect();
+            Rect::split_rects(&mut clipped_rects, &clipping_rect);
+        }
 
-//         for rect in clipped_rects.list.into_iter() {
-//             let rect = rect.unwrap().payload;
-//             rect.paint(WINDOW_BACKGROUND_COLOUR, fb_addr);
+        for rect in clipped_rects.list.into_iter() {
+            let rect = rect.payload;
+            rect.paint(WINDOW_BACKGROUND_COLOUR, fb_addr);
 
-//             // Paint the outline
-//             rect.paint_rect_outline(WINDOW_BORDER_COLOUR, fb_addr, &rect);
+            // Paint the outline
+            rect.paint_rect_outline(WINDOW_BORDER_COLOUR, fb_addr, &rect);
 
-//             // Paint top title bar
-//             rect.paint_special(WINDOW_TITLE_COLOUR, fb_addr, &constrained_area_1);
+            // Paint top title bar
+            rect.paint_special(WINDOW_TITLE_COLOUR, fb_addr, &constrained_area_1);
 
-//             // Paint main area
-//             rect.paint_special(WINDOW_BACKGROUND_COLOUR, fb_addr, &constrained_area_2);
+            // Paint main area
+            rect.paint_special(WINDOW_BACKGROUND_COLOUR, fb_addr, &constrained_area_2);
 
-//             rect.paint_text(self.title, x_start, y_start, font, fb_addr);
-//         }
+            rect.paint_text(self.title, x_start, y_start, font, fb_addr);
+        }
 
-//         clipped_rects.empty();
-//     }
-// }
+        clipped_rects.empty();
+    }
+}

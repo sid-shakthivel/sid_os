@@ -135,7 +135,7 @@ impl<T: Clone> PriorityQueue<T> {
 }
 
 pub struct Queue<T: 'static> {
-    list: List<T>,
+    pub list: List<T>,
 }
 
 impl<T: Clone> Queue<T> {
@@ -144,11 +144,15 @@ impl<T: Clone> Queue<T> {
     }
 
     pub fn enqueue(&mut self, payload: T) {
+        print_serial!("Pushing from queue\n");
         let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
+        // let addr = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap() as usize;
+        // PAGE_FRAME_ALLOCATOR.free();
         self.list.push_back(payload, addr);
     }
 
     pub fn dequeue(&mut self) -> Option<T> {
+        print_serial!("Removing from queue\n");
         self.list.remove_at(0).map(|node| {
             kfree(node.1);
             node.0

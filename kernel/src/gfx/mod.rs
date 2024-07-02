@@ -1,7 +1,11 @@
 mod psf;
 mod rect;
+pub mod tga;
 pub mod window;
 pub mod wm;
+
+use window::Window;
+use wm::WM;
 
 use crate::memory::allocator::{kmalloc, print_memory_list};
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
@@ -39,23 +43,29 @@ pub fn init(fb_tag: &multiboot2::FramebufferTag) {
         .alloc_page_frames(number_of_pages) as usize;
     PAGE_FRAME_ALLOCATOR.free();
 
-    print_serial!("Mapping {:#X} to {:#X}\n", address, fb_tag.addr as usize);
-
     // Map the address to video memory
     paging::map_pages(number_of_pages, address, fb_tag.addr as usize);
-
-    // for x in 0..SCREEN_WIDTH {
-    //     for y in 0..SCREEN_HEIGHT {
-    //         let offset = ((address as u32) + (y as u32 * 4096) + ((x as u32 * 32) / 8)) as *mut u32;
-    //         unsafe {
-    //             *offset = BACKGROUND_COLOUR;
-    //         }
-    //     }
-    // }
 
     unsafe {
         TEST_ADDRESS = address;
     }
+
+    WM.lock().set_fb_address(address);
+    WM.free();
+
+    WM.lock().set_font();
+    WM.free();
+
+    WM.lock()
+        .add_window(Window::new("Terminal", 100, 100, 300, 300));
+    WM.free();
+
+    WM.lock()
+        .add_window(Window::new("Paint", 300, 200, 150, 300));
+    WM.free();
+
+    WM.lock().paint();
+    WM.free();
 }
 
 #[repr(C, packed)]
@@ -72,18 +82,6 @@ pub struct TgaHeader {
     w: u16,        // image's width
     bpp: u8,       // must be 32
     pixeltype: u8, // must be 40
-}
-
-fn invert_color(color: u32) -> u32 {
-    let mask = 0xFF; // Mask for each color component (8 bits)
-    let (a, r, g, b) = (
-        (color >> 24) & mask,
-        (color >> 16) & mask,
-        (color >> 8) & mask,
-        color & mask,
-    );
-    let inverted_color = (mask ^ a) << 24 | (mask ^ r) << 16 | (mask ^ g) << 8 | (mask ^ b);
-    inverted_color
 }
 
 pub fn display_image(ptr: *const u8, size: usize) {

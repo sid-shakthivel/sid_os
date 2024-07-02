@@ -62,8 +62,6 @@ impl Rect {
                 let glyph_offset: u16 =
                     unsafe { (*glyph_address.offset(cy as isize) as u16) & (1 << index) };
                 if glyph_offset > 0 {
-                    // self.draw_pixel(adjusted_x, adjusted_y, 0x00);
-
                     let fb_offset = ((fb_addr as u32)
                         + (adjusted_y as u32 * 4096)
                         + ((adjusted_x as u32 * 32) / 8))
@@ -121,8 +119,6 @@ impl Rect {
         let y_base = core::cmp::max(contrained_area.top, self.top);
         let x_limit = core::cmp::min(contrained_area.right, self.right);
         let y_limit = core::cmp::min(contrained_area.bottom, self.bottom);
-
-        // print_serial!("{} {} {} {}\n", x_base, x_limit, y_base, y_limit);
 
         for x in x_base..x_limit {
             for y in y_base..y_limit {
@@ -196,28 +192,28 @@ impl Rect {
         Splits a list of already splitted rectangles by another splitting rectangle
     */
     pub fn split_rects(rects: &mut Queue<Rect>, splitting_rect: &Rect) {
-        // let mut test_rects = Queue::<Rect>::new();
+        let mut test_rects = Queue::<Rect>::new();
 
-        // for mut i in 0..rects.list.length {
-        //     let mut working_rect = rects.get_element(i).unwrap();
+        for mut i in 0..rects.list.length() {
+            let mut working_rect = rects.get_element(i);
 
-        //     // Check for intersection
-        //     if (!splitting_rect.does_intersect(&working_rect.1)) {
-        //         test_rects.enqueue(working_rect.1.clone());
-        //         continue;
-        //     }
+            // Check for intersection
+            if (!splitting_rect.does_intersect(&working_rect)) {
+                test_rects.enqueue(*working_rect);
+                continue;
+            }
 
-        //     let mut splitted_rects = Self::split_rect(&mut working_rect.1, splitting_rect);
+            let mut splitted_rects = Self::split_rect(working_rect, splitting_rect);
 
-        //     for rect in splitted_rects.list.into_iter() {
-        //         test_rects.enqueue(rect.unwrap().payload);
-        //     }
-        // }
+            for rect in splitted_rects.list.into_iter() {
+                test_rects.enqueue(rect.payload);
+            }
+        }
 
-        // rects.empty();
+        rects.empty();
 
-        // for rect in test_rects.list.into_iter() {
-        //     rects.enqueue(rect.unwrap().payload);
-        // }
+        for rect in test_rects.list.into_iter() {
+            rects.enqueue(rect.payload);
+        }
     }
 }

@@ -14,6 +14,7 @@
 */
 
 use super::ps2;
+use crate::gfx::wm::WM;
 use crate::utils::bitwise;
 use crate::utils::spinlock::Lock;
 use crate::{panic, print_serial};
@@ -44,6 +45,7 @@ pub struct Mouse {
     flags: u8,
     current_byte: usize,
     variety: ps2::PS2Device,
+    is_left_click: bool,
 }
 
 impl Mouse {
@@ -71,6 +73,8 @@ impl Mouse {
 
         let byte = ps2::read(0x60).unwrap();
 
+        self.is_left_click = false;
+
         match self.current_byte {
             0 => {
                 if !bitwise::contains_bit(byte, GenericPacketBits::IsFour as u8) {
@@ -78,12 +82,19 @@ impl Mouse {
                 }
 
                 if bitwise::contains_bit(byte, GenericPacketBits::LeftBtnClicked as u8) {
-                    print_serial!("Left Click\n");
+                    self.is_left_click = true;
+                    // print_serial!("Left Click\n");
                 }
 
                 if bitwise::contains_bit(byte, GenericPacketBits::RightBtnClicked as u8) {
-                    print_serial!("Right Click\n");
+                    // print_serial!("Right Click\n");
                 }
+
+                WM.lock()
+                    .handle_mouse_event((self.x as i16, self.y as i16), self.is_left_click);
+                WM.free();
+
+                // print_serial!("X: {} Y: {}\n", self.x, self.y);
 
                 self.flags = byte;
             }
@@ -181,4 +192,5 @@ pub static MOUSE: Lock<Mouse> = Lock::new(Mouse {
     flags: 0,
     current_byte: 0,
     variety: ps2::PS2Device::PS2Mouse,
+    is_left_click: false,
 });

@@ -56,11 +56,12 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
     match wrapped_memory_block {
         Some(memory_block) => {
             // Remove old memory block from list
+            print_serial!("Removing from free memory list\n");
             FREE_MEMORY_BLOCK_LIST.lock().remove_at(index);
             FREE_MEMORY_BLOCK_LIST.free();
 
-            let node_addr = memory_block.data;
-            let header_addr = get_base_address(node_addr);
+            let data_addr = memory_block.data;
+            let header_addr = get_header_address(data_addr);
 
             let new_node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
 
@@ -69,9 +70,13 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
             // If block is larger then memory required, split region and add second part to list
             if memory_block.size > size {
                 // Add remaining section of block
-                let new_free_node_addr =
+                let new_free_header_addr =
                     unsafe { (header_addr as *mut u8).offset(size as isize) as *mut usize };
-                create_new_memory_block(memory_block.size - size, new_free_node_addr, true);
+
+                let new_free_data_addr = unsafe {
+                    (new_free_header_addr as *mut u8).offset(LIST_NODE_MEMORY_SIZE) as *mut usize
+                };
+                create_new_memory_block(memory_block.size - size, new_free_data_addr, true);
             }
 
             return dp;
@@ -94,7 +99,9 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
     Frees a memory region which can later be allocated
 */
 pub fn kfree(dp: *mut usize) {
-    let header_addr = get_base_address(dp);
+    print_serial!("NOT HERE\n");
+
+    let header_addr = get_header_address(dp);
     let node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
     let memory_block = node.payload.clone();
 
@@ -106,7 +113,7 @@ pub fn kfree(dp: *mut usize) {
     // Add block to list of free blocks (to the front)
     FREE_MEMORY_BLOCK_LIST
         .lock()
-        .push_front(memory_block, header_addr as usize);
+        .push_back(memory_block, header_addr as usize);
     FREE_MEMORY_BLOCK_LIST.free();
 
     let updated_node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
@@ -178,6 +185,7 @@ fn create_new_memory_block(size: usize, addr: *mut usize, is_free: bool) -> *mut
 
     if is_free {
         // Push to linked list
+        print_serial!("Pushing from free memory list\n");
         FREE_MEMORY_BLOCK_LIST
             .lock()
             .push_back(new_memory_block, addr as usize);
@@ -193,6 +201,6 @@ fn create_new_memory_block(size: usize, addr: *mut usize, is_free: bool) -> *mut
 /*
     Returns pointer to address of the list node in general
 */
-fn get_base_address(dp: *mut usize) -> *mut usize {
+fn get_header_address(dp: *mut usize) -> *mut usize {
     return unsafe { dp.offset(-1 * (LIST_NODE_MEMORY_SIZE / 8) as isize) };
 }
