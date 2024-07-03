@@ -16,8 +16,8 @@ use crate::{print_serial, CONSOLE};
 const SCREEN_WIDTH: u16 = 1024;
 const SCREEN_HEIGHT: u16 = 768;
 
-const PITCH: usize = 4096;
-const BPP: usize = 32;
+const PITCH: u32 = 4096;
+const BPP: u32 = 32;
 
 const BACKGROUND_COLOUR: u32 = 0x3499fe;
 

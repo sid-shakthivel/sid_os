@@ -56,7 +56,6 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
     match wrapped_memory_block {
         Some(memory_block) => {
             // Remove old memory block from list
-            print_serial!("Removing from free memory list\n");
             FREE_MEMORY_BLOCK_LIST.lock().remove_at(index);
             FREE_MEMORY_BLOCK_LIST.free();
 
@@ -73,10 +72,9 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
                 let new_free_header_addr =
                     unsafe { (header_addr as *mut u8).offset(size as isize) as *mut usize };
 
-                let new_free_data_addr = unsafe {
-                    (new_free_header_addr as *mut u8).offset(LIST_NODE_MEMORY_SIZE) as *mut usize
-                };
-                create_new_memory_block(memory_block.size - size, new_free_data_addr, true);
+                let aligned_addr = align(new_free_header_addr as usize);
+
+                create_new_memory_block(memory_block.size - size, new_free_header_addr, true);
             }
 
             return dp;
@@ -99,8 +97,6 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
     Frees a memory region which can later be allocated
 */
 pub fn kfree(dp: *mut usize) {
-    print_serial!("NOT HERE\n");
-
     let header_addr = get_header_address(dp);
     let node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
     let memory_block = node.payload.clone();
@@ -116,7 +112,7 @@ pub fn kfree(dp: *mut usize) {
         .push_back(memory_block, header_addr as usize);
     FREE_MEMORY_BLOCK_LIST.free();
 
-    let updated_node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
+    // let updated_node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
 
     // Check next node to merge memory regions together to alleviate fragmentation
 
@@ -185,7 +181,6 @@ fn create_new_memory_block(size: usize, addr: *mut usize, is_free: bool) -> *mut
 
     if is_free {
         // Push to linked list
-        print_serial!("Pushing from free memory list\n");
         FREE_MEMORY_BLOCK_LIST
             .lock()
             .push_back(new_memory_block, addr as usize);

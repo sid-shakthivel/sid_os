@@ -7,9 +7,6 @@ Remember:
     let val = unsafe { ptr.read_unaligned() };
 ```
 
-0x1FFF000
-0x1ffffff
-
 Now: 
 - IPC with queues
 - Wix kernel mode window manager
