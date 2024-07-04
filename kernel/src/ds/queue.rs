@@ -144,9 +144,9 @@ impl<T: Clone> Queue<T> {
     }
 
     pub fn enqueue(&mut self, payload: T) {
-        let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
         // let addr = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap() as usize;
         // PAGE_FRAME_ALLOCATOR.free();
+        let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
         self.list.push_back(payload, addr);
     }
 

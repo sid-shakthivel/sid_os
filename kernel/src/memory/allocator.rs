@@ -62,12 +62,12 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
             let data_addr = memory_block.data;
             let header_addr = get_header_address(data_addr);
 
-            let new_node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
-
-            let dp = create_new_memory_block(size, header_addr, false);
+            create_new_memory_block(size, header_addr, false);
 
             // If block is larger then memory required, split region and add second part to list
-            if memory_block.size > size {
+            // Must be enough space to actually hold a memory block
+            let new_block_size = memory_block.size - size;
+            if new_block_size > LIST_NODE_MEMORY_SIZE as usize {
                 // Add remaining section of block
                 let new_free_header_addr =
                     unsafe { (header_addr as *mut u8).offset(size as isize) as *mut usize };
@@ -77,7 +77,7 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
                 create_new_memory_block(memory_block.size - size, new_free_header_addr, true);
             }
 
-            return dp;
+            data_addr
         }
         None => {
             // No memory blocks can be found, thus must allocate more memory according to how many bytes needed
@@ -96,8 +96,8 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
     Recives pointer to memory address of payload
     Frees a memory region which can later be allocated
 */
-pub fn kfree(dp: *mut usize) {
-    let header_addr = get_header_address(dp);
+pub fn kfree(data_addr: *mut usize) {
+    let header_addr = get_header_address(data_addr);
     let node = unsafe { &mut *(header_addr as *mut ListNode<MemoryBlock>) };
     let memory_block = node.payload.clone();
 

@@ -43,4 +43,9 @@ impl<T: Clone> Stack<T> {
             .get_at(index)
             .expect("Undefined node at specifies index");
     }
+
+    pub fn peek(&mut self) -> &mut T {
+        let value = self.list.head.expect("ERROR: Stack is empty");
+        return unsafe { &mut (*value).payload };
+    }
 }

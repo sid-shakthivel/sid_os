@@ -1,3 +1,5 @@
+use core::panic;
+
 use super::psf::{self, Font};
 use super::rect::{self, Rect};
 use super::window::Window;
@@ -20,8 +22,8 @@ const MOUSE_COLOUR: u32 = 0x00;
 pub struct WindowManager<'a> {
     windows: Stack<Window>,
     dr_windows: Queue<Rect>,
-    dr_background: Queue<Rect>,
     selected_window: Option<Window>,
+    drag_region: Option<Rect>,
     drag_offset: (u16, u16),
     mouse_coords: (u16, u16),
     fb_addr: usize,
@@ -50,8 +52,8 @@ impl<'a> WindowManager<'a> {
         WindowManager {
             windows: Stack::<Window>::new(),
             dr_windows: Queue::<Rect>::new(),
-            dr_background: Queue::<Rect>::new(),
             selected_window: None,
+            drag_region: None,
             fb_addr: 0,
             current_wid: 0,
             mouse_coords: (512, 384),
@@ -91,18 +93,15 @@ impl<'a> WindowManager<'a> {
             return;
         }
 
-        let old_mouse_rect = self.generate_mouse_rect();
-
-        // self.dr_windows.enqueue(old_mouse_rect);
-
         match self.current_state {
             WMState::Idle => {
                 if is_left_click {
-                    let index = self.find_window_under_mouse();
+                    let (index, _window) = self.find_window_under_mouse();
 
                     if (index > -1) {
                         self.current_state = WMState::Select;
                         self.raise(index);
+                        self.paint_on_raise();
                     }
                 }
             }
@@ -114,20 +113,14 @@ impl<'a> WindowManager<'a> {
             WMState::Drag => {
                 if is_left_click {
                     self.move_window();
+                    self.paint_on_drag();
                 } else {
                     self.current_state = WMState::Idle;
                 }
             }
         }
 
-        self.mouse_coords.0 = new_mouse_coords.0 as u16;
-        self.mouse_coords.1 = new_mouse_coords.1 as u16;
-
-        let mouse_rect = self.generate_mouse_rect();
-
-        let mouse_rect = mouse_rect.paint(MOUSE_COLOUR, self.fb_addr);
-
-        self.dr_windows.empty();
+        self.paint_mouse(new_mouse_coords);
     }
 
     fn move_window(&mut self) {
@@ -141,19 +134,117 @@ impl<'a> WindowManager<'a> {
                the frame of the new window
                this total area needs to be clipped from
             */
-            let drag_total_area = self.generate_drag_total_area(&current_window, new_x, new_y);
+            let total_drag_area = self.generate_drag_total_area(&current_window, new_x, new_y);
+            self.drag_region = Some(total_drag_area);
 
-            // self.dr_windows.enqueue(drag_total_area);
-            // Rect::split_rects(clipping_rects, &clipping_rect);
+            let window_ptr = self.windows.peek();
 
-            let window_ptr = unsafe { &mut *(self.windows.list.head.unwrap()) };
-            window_ptr.payload.x = new_x;
-            window_ptr.payload.y = new_y;
+            window_ptr.x = new_x;
+            window_ptr.y = new_y;
         }
     }
 
-    fn paint_dirty_windows(&mut self) {
-        // Paint dirty window against self
+    fn paint_mouse(&mut self, new_mouse_coords: (i16, i16)) {
+        let mut old_mouse_rect = self.generate_mouse_rect();
+
+        let mut has_repainted: bool = false;
+
+        for (index, w_window) in self.windows.list.into_iter().enumerate() {
+            let window = w_window.payload;
+            if let Some(intersection_region) = window.generate_rect().intersection(&old_mouse_rect)
+            {
+                has_repainted = true;
+                intersection_region.paint(window.colour, self.fb_addr);
+                break;
+            }
+        }
+
+        // If the mouse is not over a window, repaint the background
+
+        if !has_repainted {
+            old_mouse_rect.paint(BACKGROUND_COLOUR, self.fb_addr);
+        }
+
+        self.mouse_coords.0 = new_mouse_coords.0 as u16;
+        self.mouse_coords.1 = new_mouse_coords.1 as u16;
+
+        let mouse_rect = self.generate_mouse_rect();
+
+        mouse_rect.paint(MOUSE_COLOUR, self.fb_addr);
+    }
+
+    fn paint_on_raise(&mut self) {
+        // print_serial!("Painting on raise\n");
+
+        let raised_window = self.selected_window.expect("Expected window");
+
+        for (index, w_window) in self.windows.list.into_iter().enumerate() {
+            let window = w_window.payload;
+            if (index > 0) {
+                if let Some(intersection_region) = raised_window
+                    .generate_rect()
+                    .intersection(&window.generate_rect())
+                {
+                    intersection_region.paint(raised_window.colour, self.fb_addr);
+                }
+            }
+        }
+    }
+
+    fn paint_on_drag(&mut self) {
+        /*
+           This method is called strictly when dragging window
+           It will trigger a redraw of the window
+           It will then trigger a redraw for the rest of the windows below of the dirty region
+        */
+
+        let raised_window = self.windows.peek().clone();
+
+        if let Some(mut drag_region) = self.drag_region {
+            for (index, w_window) in self.windows.list.into_iter().enumerate() {
+                let window = w_window.payload;
+
+                if (index == 0) {
+                    window.generate_rect().paint(window.colour, self.fb_addr);
+                } else {
+                    let mut test_rects: Queue<Rect> = Queue::<Rect>::new();
+
+                    test_rects.enqueue(drag_region);
+                    Rect::split_rect_list(&mut raised_window.generate_rect(), &mut test_rects);
+
+                    for rect in test_rects.list.into_iter() {
+                        // print_serial!("{:?}\n", rect);
+                        rect.payload.paint_against_region(
+                            &window.generate_rect(),
+                            window.colour,
+                            self.fb_addr,
+                        );
+                    }
+
+                    test_rects.empty();
+                }
+            }
+
+            drag_region.top -= 50;
+            drag_region.bottom += 50;
+            drag_region.left -= 50;
+            drag_region.right += 50;
+
+            self.dr_windows.enqueue(drag_region);
+
+            for w_window in self.windows.list.into_iter() {
+                let window = w_window.payload;
+                let mut splitting_rect = window.generate_rect();
+                Rect::split_rect_list(&mut splitting_rect, &mut self.dr_windows);
+            }
+
+            for rect in self.dr_windows.list.into_iter() {
+                let rect = rect.payload;
+                rect.paint(BACKGROUND_COLOUR, self.fb_addr);
+            }
+
+            self.dr_windows.empty();
+        }
     }
 
     fn generate_mouse_rect(&self) -> Rect {
@@ -165,8 +256,8 @@ impl<'a> WindowManager<'a> {
         )
     }
 
-    fn find_window_under_mouse(&mut self) -> isize {
-        for (index, window) in self.windows.list.into_iter().enumerate() {
+    fn find_window_under_mouse(&mut self) -> (isize, Option<&Window>) {
+        for (index, mut window) in self.windows.list.into_iter().enumerate() {
             let win = window.payload;
 
             if win
@@ -177,10 +268,10 @@ impl<'a> WindowManager<'a> {
                 self.drag_offset.0 = self.mouse_coords.0 - win.x;
                 self.drag_offset.1 = self.mouse_coords.1 - win.y;
 
-                return index as isize;
+                return (index as isize, Some(&window.payload));
             }
         }
-        -1
+        (-1, None)
     }
 
     fn get_above_windows(&self, target_index: usize) -> Queue<Window> {
@@ -199,7 +290,7 @@ impl<'a> WindowManager<'a> {
 
     fn raise(&mut self, index: isize) {
         // Only need to raise window if not already head
-        if (index > 0) {
+        if (index > -1) {
             let remove_data = self.windows.list.remove_at(index as usize).unwrap();
             let current_window = self.selected_window.unwrap();
             kfree(remove_data.1);
@@ -207,25 +298,18 @@ impl<'a> WindowManager<'a> {
         }
     }
 
-    fn get_below_windows(&self, target_index: usize) -> Queue<Window> {
-        let mut windows_below = Queue::<Window>::new();
-
-        for (index, window) in self.windows.list.into_iter().enumerate() {
-            if (index > target_index) {
-                windows_below.enqueue(window.payload.clone());
-            }
-        }
-
-        windows_below
-    }
-
     fn generate_drag_total_area(&self, window: &Window, new_x: u16, new_y: u16) -> Rect {
+        // let top = new_y.min(window.y) - 50;
+        // let bottom = (new_y + window.height).max(window.y + window.height) + 50;
+        // let left = new_x.min(window.x) - 50;
+        // let right = (new_x + window.width).max(window.x + window.width) + 50;
+
         let top = new_y.min(window.y);
         let bottom = (new_y + window.height).max(window.y + window.height);
         let left = new_x.min(window.x);
         let right = (new_x + window.width).max(window.x + window.width);
 
-        Rect::new(top, bottom, left, right)
+        Rect::new(top, bottom, right, left)
     }
 
     pub fn paint(&mut self) {
@@ -254,7 +338,7 @@ impl<'a> WindowManager<'a> {
             }
 
             for rect in self.dr_windows.list.into_iter() {
-                rect.payload.paint(0xFFBBBBBB, self.fb_addr);
+                rect.payload.paint(window.colour, self.fb_addr);
             }
 
             self.dr_windows.empty();

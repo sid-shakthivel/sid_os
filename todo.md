@@ -10,7 +10,7 @@ Remember:
 Now: 
 - IPC with queues
 - Wix kernel mode window manager
-- Fix any potential memory leaks
+- Wrapping sub zero
 
 Format of TGA files:
 - Do not use RLE compression

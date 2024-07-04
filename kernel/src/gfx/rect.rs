@@ -9,8 +9,8 @@ use super::{psf::Font, BPP, PITCH};
 pub struct Rect {
     pub top: u16,
     pub bottom: u16,
-    pub right: u16,
     pub left: u16,
+    pub right: u16,
 }
 
 impl Rect {
@@ -33,7 +33,26 @@ impl Rect {
     pub fn coord_does_intersect(&self, coords: (u16, u16)) -> bool {
         let (x, y) = coords;
 
-        return x >= self.left && x <= self.right && y >= self.top && y <= self.bottom;
+        return x > self.left && x < self.right && y > self.top && y < self.bottom;
+    }
+
+    pub fn intersection(&self, other: &Rect) -> Option<Rect> {
+        let intersect_left = self.left.max(other.left);
+        let intersect_right = self.right.min(other.right);
+        let intersect_top = self.top.max(other.top);
+        let intersect_bottom = self.bottom.min(other.bottom);
+
+        // Check if there is an overlap
+        if intersect_left < intersect_right && intersect_top < intersect_bottom {
+            Some(Rect::new(
+                intersect_top,
+                intersect_bottom,
+                intersect_right,
+                intersect_left,
+            ))
+        } else {
+            None
+        }
     }
 
     pub fn paint_against_region(&self, region: &Rect, colour: u32, fb_address: usize) {
@@ -43,7 +62,8 @@ impl Rect {
         let x_limit = core::cmp::min(region.right, self.right);
         let y_limit = core::cmp::min(region.bottom, self.bottom);
 
-        let clamped_rect = Rect::new(y_base, y_limit, x_base, x_limit);
+        let clamped_rect = Rect::new(y_base, y_limit, x_limit, x_base);
+
         clamped_rect.paint(colour, fb_address);
     }
 

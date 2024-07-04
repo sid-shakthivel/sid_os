@@ -15,10 +15,18 @@ pub struct Window {
     pub y: u16,
     pub width: u16,
     pub height: u16,
+    pub colour: u32,
 }
 
 impl Window {
-    pub const fn new(title: &'static str, x: u16, y: u16, width: u16, height: u16) -> Window {
+    pub const fn new(
+        title: &'static str,
+        x: u16,
+        y: u16,
+        width: u16,
+        height: u16,
+        colour: u32,
+    ) -> Window {
         /*
            Must constrain areas which are updated to certain regions
            Windows consist of: title bar, main area, outline, text
@@ -30,6 +38,7 @@ impl Window {
             y,
             width,
             height,
+            colour,
         }
     }
 
