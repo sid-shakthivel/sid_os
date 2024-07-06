@@ -9,7 +9,7 @@
 use core::panic;
 
 use crate::{
-    gfx,
+    fs, gfx,
     multitask::{self, PROCESS_MANAGER},
     print_serial,
 };
@@ -43,7 +43,9 @@ pub fn initalise_userland(multiboot_info: &MultibootBootInfo) {
         //     .add_process(true, i, tag.mod_start as usize);
         // PROCESS_MANAGER.free();
 
-        gfx::display_image(tag.mod_start as *const u8, tag.size as usize);
+        // gfx::display_image(tag.mod_start as *const u8, tag.size as usize);
+
+        fs::init(tag.mod_start as usize);
     }
 }
 

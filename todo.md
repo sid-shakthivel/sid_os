@@ -8,9 +8,14 @@ Remember:
 ```
 
 Now: 
-- IPC with queues
-- Wix kernel mode window manager
-- Wrapping sub zero
+- FAT filesystem driver
+- Syscalls with file system
+- IPC with message queues
+- Wrapping sub zero (for window manager)
+- Events queue for eventual usermode stuff
+- Add back nicer window design
+
+Where does font= come from? not in makefile
 
 Format of TGA files:
 - Do not use RLE compression
@@ -41,6 +46,7 @@ Later:
 - Add more comments everywhere
 
 Useful articles:
+https://fejlesztek.hu/create-a-fat-file-system-image-on-linux/
 https://github.com/thethumbler/Aquila?tab=readme-ov-file
 http://www.jamesmolloy.co.uk/tutorial_html/9.-Multitasking.html
 http://www.brokenthorn.com/Resources/OSDev25.html
@@ -48,13 +54,6 @@ https://is.muni.cz/el/fi/jaro2018/PB173/um/05_writing_a_very_small_os_kernel/osd
 http://dmitrysoshnikov.com/compilers/writing-a-memory-allocator/
 https://wiki.osdev.org/Brendan%27s_Multi-tasking_Tutorial
 https://jmarlin.github.io/wsbe/
-
-Current Tabs:
-https://jmarlin.github.io/wsbe/
-https://github.com/sid-shakthivel/sid_os/blob/6ccee810148848dfd6251a2f2ff59912bd23eac8/kernel/src/gfx/rect.rs
-https://github.com/rust-osdev/ps2-mouse/blob/master/src/lib.rs
-https://jmnl.xyz/window-manager/
-https://github.com/sid-shakthivel/os64/blob/3b90c4e56d66eef83713607586449404adbbd5d0/kernel/src/page_frame_allocator.rs
 
 
 export CC=x86_64-elf-gcc CFLAGS='--target=x86_64-pc-none-elf -march=x86_64 -DSYSCALL_NO_TLS' LDFLAGS='-fuse-ld=lld' 
