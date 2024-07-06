@@ -32,8 +32,6 @@ impl<T: Clone> Stack<T> {
     // Add to top of list
     pub fn push(&mut self, payload: T) {
         let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
-        // let addr = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap() as usize;
-        // PAGE_FRAME_ALLOCATOR.free();
         self.list.push_front(payload, addr);
     }
 

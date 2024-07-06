@@ -1,10 +1,11 @@
-const DEFAULT_SIZE: usize = 50;
+const DEFAULT_SIZE: usize = 5;
 
 use crate::{
     memory::allocator::{kfree, kmalloc},
     print_serial,
 };
 
+#[derive(Debug, Clone, Copy)]
 pub struct DynamicArray<T> {
     data: *mut T,
     capacity: usize, // Maximum capacity
@@ -69,6 +70,10 @@ impl<T> DynamicArray<T> {
         }
     }
 
+    pub fn free(&mut self) {
+        kfree(self.data as *mut usize);
+    }
+
     pub fn is_empty(&self) -> bool {
         self.length == 0
     }
@@ -93,6 +98,36 @@ impl<T> DynamicArray<T> {
     pub fn get(&self, index: usize) -> Option<&mut T> {
         if index < self.length {
             unsafe { Some(&mut *self.data.add(index)) }
+        } else {
+            None
+        }
+    }
+
+    pub fn iter(&self) -> DynamicArrayIter<'_, T> {
+        DynamicArrayIter {
+            data: self.data,
+            length: self.length,
+            index: 0,
+            _marker: core::marker::PhantomData,
+        }
+    }
+}
+
+pub struct DynamicArrayIter<'a, T> {
+    data: *const T,
+    length: usize,
+    index: usize,
+    _marker: core::marker::PhantomData<&'a T>,
+}
+
+impl<'a, T> Iterator for DynamicArrayIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < self.length {
+            let item = unsafe { &*self.data.add(self.index) };
+            self.index += 1;
+            Some(item)
         } else {
             None
         }

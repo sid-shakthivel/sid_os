@@ -1,5 +1,4 @@
 use crate::print_serial;
-use crate::CONSOLE;
 
 // Each node stores a reference to the next/previous node within the list along with a payload
 #[derive(Debug, Copy, Clone)]

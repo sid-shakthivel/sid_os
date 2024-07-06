@@ -1,12 +1,10 @@
 #![no_std] // Don't link with Rust standard library
-#![feature(const_option)]
-#![feature(core_intrinsics)]
-#![feature(naked_functions)]
 #![allow(warnings)]
+#![feature(core_intrinsics)]
 #![feature(asm_const)]
+#![feature(naked_functions)]
 #![feature(exclusive_range_pattern)]
 #![feature(const_mut_refs)]
-#![feature(ptr_metadata)]
 
 mod dev;
 mod ds;

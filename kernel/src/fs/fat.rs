@@ -41,23 +41,23 @@ struct ExtendedBootRecord {
 
 // Stores information on where a file's data/folder are stored on disk along with name, size, creation
 #[derive(Debug, Copy, Clone)]
-#[repr(C, packed)]
-struct FileEntry {
-    filename: [u8; 8],
-    ext: [u8; 3],
-    attributes: u8,    // Could be LFN, Directory, Archive
-    unused: [u8; 8],   // Reserved for windows NT
-    cluster_high: u16, // Always 0
+#[repr(C)]
+pub struct FileEntry {
+    pub filename: [u8; 8],
+    pub ext: [u8; 3],
+    pub attributes: u8, // Could be LFN, Directory, Archive
+    unused: [u8; 8],    // Reserved for windows NT
+    cluster_high: u16,  // Always 0
     time: u16,
     date: u16,
-    cluster_low: u16,
-    size: u32, // (In bytes)
+    pub cluster_low: u16,
+    pub size: u32, // (In bytes)
 }
 
 // These always have a regular entry as well, and these are placed before the standard entry and hold extra data
 #[derive(Debug, Copy, Clone)]
 #[repr(C, packed)]
-struct LongFileEntry {
+pub struct LongFileEntry {
     order: u8,             // Since there could be number of LFE's, order is important
     name_start: [u16; 5],  // First 5 characters
     attribute: u8,         // 0x0F
@@ -107,11 +107,11 @@ impl ExtendedBootRecord {
     }
 }
 
-fn convert_sector_to_bytes(sector: usize) -> usize {
+pub fn convert_sector_to_bytes(sector: usize) -> usize {
     return sector * BYTES_PER_SECTOR;
 }
 
-fn get_next_cluster(fat_addr: usize, active_cluster: usize) -> Option<usize> {
+pub fn get_next_cluster(fat_addr: usize, active_cluster: usize) -> Option<usize> {
     let fat_offset = active_cluster * 2;
 
     let next_cluster = read_fat(fat_addr, fat_offset) as usize;
@@ -135,10 +135,8 @@ fn get_sector_from_cluster(sector_addr: usize, cluster_num: usize) -> usize {
     ((cluster_num - 2) * BYTES_PER_SECTOR) + sector_addr
 }
 
-pub fn init(start_addr: usize) {
+pub fn init(start_addr: usize) -> (usize, usize, usize) {
     let bpb = unsafe { &*(start_addr as *const BiosParameterBlock) };
-
-    print_serial!("bpb {:?}\n", bpb);
 
     let ebr = unsafe {
         &*((start_addr as *mut u8).offset(size_of::<BiosParameterBlock>() as isize)
@@ -147,17 +145,6 @@ pub fn init(start_addr: usize) {
 
     bpb.verify();
     ebr.verify();
-
-    // Calculate root directory to addr
-    let root_dir_sectors =
-        ((bpb.root_entry_count * 32) + (bpb.bytes_per_sector - 1)) / bpb.bytes_per_sector;
-
-    let first_data_sector =
-        bpb.reserved_sector_count + (bpb.table_count as u16 * bpb.table_size_16) + root_dir_sectors;
-
-    let first_root_dir_sector = first_data_sector - root_dir_sectors;
-
-    // new
 
     let fat_addr = start_addr + convert_sector_to_bytes(bpb.reserved_sector_count as usize);
 
@@ -169,56 +156,7 @@ pub fn init(start_addr: usize) {
     let rd_size: usize = ((((bpb.root_entry_count) * 32) + (bpb.bytes_per_sector - 1))
         / bpb.bytes_per_sector) as usize;
 
-    let data_sector_addr: usize = convert_sector_to_bytes(rd_size) + rd_addr;
+    let ds_addr: usize = convert_sector_to_bytes(rd_size) + rd_addr;
 
-    print_serial!(
-        "Root Directory: {} Data: {} FAT: {}\n",
-        rd_addr,
-        data_sector_addr,
-        fat_addr
-    );
-
-    print_serial!("RD size: {} {}\n", rd_size, size_of::<FileEntry>());
-
-    let first_file = unsafe { &*(rd_addr as *const FileEntry) };
-
-    print_serial!("{:?}\n", first_file);
-
-    let filename = core::str::from_utf8(&first_file.filename).unwrap();
-    let ext = core::str::from_utf8(&first_file.ext).unwrap();
-
-    let ptr = core::ptr::addr_of!(first_file.size) as *const u32;
-    let val = unsafe { ptr.read_unaligned() };
-
-    print_serial!("{} {} size is {}\n", filename, ext, val);
-
-    let mut cluster_addr =
-        get_sector_from_cluster(data_sector_addr, first_file.cluster_low as usize);
-
-    let ptr = kmalloc(10);
-    unsafe {
-        core::ptr::copy(cluster_addr as *mut u8, ptr as *mut u8, 10);
-        let c_str = CStr::from_ptr(ptr as *const i8);
-        // Convert the CStr to a Rust &str
-        let test = c_str.to_str().unwrap();
-
-        print_serial!("{}\n", test);
-    }
-
-    let dir = unsafe { &*((rd_addr + size_of::<FileEntry>()) as *const FileEntry) };
-    print_serial!("{:?}\n", dir);
-
-    let dir_name = core::str::from_utf8(&dir.filename).unwrap();
-    print_serial!("{}\n", dir_name);
-
-    cluster_addr = get_sector_from_cluster(data_sector_addr, dir.cluster_low as usize);
-
-    unsafe {
-        for i in 0..10 {
-            print_serial!("{}", *(cluster_addr as *const u8).offset(i));
-        }
-    }
-
-    // let testing = unsafe { &*((rd_addr + 2 * size_of::<FileEntry>()) as *const FileEntry) };
-    // print_serial!("{:?}\n", testing);
+    return (fat_addr, rd_addr, ds_addr);
 }
