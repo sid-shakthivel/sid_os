@@ -4,7 +4,7 @@ use core::{fmt::Error, mem::size_of, ptr};
 use crate::{memory::allocator::kmalloc, print_serial};
 
 const BYTES_PER_SECTOR: usize = 512;
-const BYTES_PER_CLUSTER: usize = 2048;
+pub const BYTES_PER_CLUSTER: usize = 2048;
 
 // Boot record occupies one sector and is at the start
 #[derive(Debug, Copy, Clone)]
@@ -111,7 +111,7 @@ pub fn convert_sector_to_bytes(sector: usize) -> usize {
     return sector * BYTES_PER_SECTOR;
 }
 
-pub fn get_next_cluster(fat_addr: usize, active_cluster: usize) -> Option<usize> {
+pub fn get_next_cluster(fat_addr: usize, active_cluster: usize) -> Option<(usize)> {
     let fat_offset = active_cluster * 2;
 
     let next_cluster = read_fat(fat_addr, fat_offset) as usize;
@@ -131,7 +131,7 @@ fn read_fat(fat_addr: usize, fat_offset: usize) -> u16 {
     return ((fat[byte_offset + 1] as u16) << 8) | (fat[byte_offset] as u16);
 }
 
-fn get_sector_from_cluster(sector_addr: usize, cluster_num: usize) -> usize {
+pub fn get_sector_from_cluster(sector_addr: usize, cluster_num: usize) -> usize {
     ((cluster_num - 2) * BYTES_PER_SECTOR) + sector_addr
 }
 

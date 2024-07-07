@@ -95,6 +95,10 @@ impl<T> DynamicArray<T> {
         core::mem::size_of::<T>() * size
     }
 
+    pub fn get_last(&self) -> Option<&mut T> {
+        self.get(self.length - 1)
+    }
+
     pub fn get(&self, index: usize) -> Option<&mut T> {
         if index < self.length {
             unsafe { Some(&mut *self.data.add(index)) }

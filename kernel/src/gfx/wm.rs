@@ -8,6 +8,7 @@ use crate::ds::stack::Stack;
 use crate::memory::allocator::{kfree, print_memory_list};
 use crate::print_serial;
 use crate::utils::spinlock::Lock;
+use crate::utils::wrapping_zero::WrappingSubZero;
 
 use super::{BACKGROUND_COLOUR, BPP, PITCH, SCREEN_HEIGHT, SCREEN_WIDTH};
 
@@ -125,8 +126,8 @@ impl<'a> WindowManager<'a> {
 
     fn move_window(&mut self) {
         if let Some(current_window) = self.selected_window {
-            let new_x = (self.mouse_coords.0).wrapping_sub(self.drag_offset.0);
-            let new_y = (self.mouse_coords.1).wrapping_sub(self.drag_offset.1);
+            let new_x = (self.mouse_coords.0).wrapping_sub_zero(self.drag_offset.0);
+            let new_y = (self.mouse_coords.1).wrapping_sub_zero(self.drag_offset.1);
 
             /*
                The affected area when dragging a window the area of:
@@ -225,9 +226,9 @@ impl<'a> WindowManager<'a> {
                 }
             }
 
-            drag_region.top -= 50;
+            drag_region.top = drag_region.top.wrapping_sub_zero(50);
             drag_region.bottom += 50;
-            drag_region.left -= 50;
+            drag_region.left = drag_region.left.wrapping_sub_zero(50);
             drag_region.right += 50;
 
             self.dr_windows.enqueue(drag_region);

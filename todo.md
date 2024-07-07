@@ -12,7 +12,6 @@ Now:
 - Figure out way to concatenate strings
 - Syscalls with file system
 - IPC with message queues
-- Wrapping sub zero (for window manager)
 - Events queue for eventual usermode stuff
 - Add back nicer window design
 
