@@ -14,12 +14,9 @@ Now:
 - IPC with message queues
 - Events queue for eventual usermode stuff
 - Add back nicer window design
+- Rewrite the FileEntry::new() function
 
 Where does font= come from? not in makefile
-
-Format of TGA files:
-- Do not use RLE compression
-- Top left
 
 int send_message(int cpid, int pid, char *ptr)
 {
@@ -34,9 +31,6 @@ int send_message(int cpid, int pid, char *ptr)
                  : "r"(cpid), "r"(pid), "m"(ptr));
     return (int)result;
 }
-
-Refactoring:
-- tga file stuff
 
 New:
 - Sleep syscall thing
@@ -70,49 +64,3 @@ ln -s /usr/local/bin/x86_64-elf-ranlib x86_64-sidos-ranlib
 liballoc
 
 ./newlib-4.1.0/newlib/libc/sys/sidos/crt0.c
-
-file system stuff:
-```
-let first_file = unsafe { &*(rd_addr as *const FileEntry) };
-
-print_serial!("{:?}\n", first_file);
-
-let filename = core::str::from_utf8(&first_file.filename)
-    .unwrap()
-    .trim_end();
-let ext = core::str::from_utf8(&first_file.ext).unwrap();
-
-let ptr = core::ptr::addr_of!(first_file.size) as *const u32;
-let val = unsafe { ptr.read_unaligned() };
-
-print_serial!("{} {} size is {}\n", filename, ext, val);
-
-let mut cluster_addr = get_sector_from_cluster(ds_addr, first_file.cluster_low as usize);
-
-let ptr = kmalloc(10);
-unsafe {
-    core::ptr::copy(cluster_addr as *mut u8, ptr as *mut u8, 10);
-    let c_str = CStr::from_ptr(ptr as *const i8);
-    // Convert the CStr to a Rust &str
-    let test = c_str.to_str().unwrap().trim();
-
-    print_serial!("{}\n", test);
-}
-
-let dir = unsafe { &*((rd_addr + size_of::<FileEntry>()) as *const FileEntry) };
-print_serial!("{:?}\n", dir);
-
-let dir_name = core::str::from_utf8(&dir.filename).unwrap();
-print_serial!("{}\n", dir_name);
-
-cluster_addr = get_sector_from_cluster(data_sector_addr, dir.cluster_low as usize);
-
-unsafe {
-    for i in 0..10 {
-        print_serial!("{}", *(cluster_addr as *const u8).offset(i));
-    }
-}
-
-// let testing = unsafe { &*((rd_addr + 2 * size_of::<FileEntry>()) as *const FileEntry) };
-// print_serial!("{:?}\n", testing);
-```

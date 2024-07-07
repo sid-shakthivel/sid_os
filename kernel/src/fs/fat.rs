@@ -5,6 +5,7 @@ use crate::{memory::allocator::kmalloc, print_serial};
 
 const BYTES_PER_SECTOR: usize = 512;
 pub const BYTES_PER_CLUSTER: usize = 2048;
+const BYTES_PER_FAT: usize = 10240;
 
 // Boot record occupies one sector and is at the start
 #[derive(Debug, Copy, Clone)]
@@ -68,6 +69,22 @@ pub struct LongFileEntry {
     name_end: [u16; 2],    // Final 2 characters
 }
 
+impl FileEntry {
+    pub fn new() -> FileEntry {
+        FileEntry {
+            filename: [0; 8],
+            ext: [0; 3],
+            attributes: 0,
+            unused: [0; 8],
+            cluster_high: 0,
+            time: 0,
+            date: 0,
+            cluster_low: 0,
+            size: 0,
+        }
+    }
+}
+
 impl BiosParameterBlock {
     pub fn verify(&self) {
         assert!(
@@ -84,6 +101,10 @@ impl BiosParameterBlock {
             self.sectors_per_cluster == 4,
             "Error: Sectors per cluster is not 4"
         );
+
+        assert!(self.table_count == 2, "Error: Table count is not 2");
+
+        assert!(self.table_size_16 == 20, "Error: Table size is not 20");
 
         // field is set if there are more than 65535 sectors in the volume this may cause problems *CHECK*
         assert!(
@@ -117,10 +138,30 @@ pub fn get_next_cluster(fat_addr: usize, active_cluster: usize) -> Option<(usize
     let next_cluster = read_fat(fat_addr, fat_offset) as usize;
 
     match next_cluster {
+        0x00 => panic!("Error: Empty cluster?"),
         0xFFF7 => panic!("Error: Bad cluster when reading cluster!"), // Indicates bad cluster
         0xFFF8..=0xFFFF => None, // Indicates the whole file has been read
         _ => Some(next_cluster), // Gives next cluster number
     }
+}
+
+pub fn write_fat(fat_addr: usize, cluster: usize, next_cluster: usize) {
+    let fat_offset = cluster * 2;
+    let fat = unsafe { &mut *(fat_addr as *mut [u8; 512]) };
+    fat[fat_offset] = (next_cluster & 0x00FF) as u8;
+    fat[fat_offset + 1] = ((next_cluster & 0xFF00) >> 8) as u8;
+}
+
+pub fn find_free_cluster(fat_addr: usize) -> Option<usize> {
+    let fat = unsafe { &mut *(fat_addr as *mut [u8; 512]) };
+    for i in 0..(BYTES_PER_FAT / 2) {
+        if ((fat[i + 1] as u16) << 8 | (fat[i] as u16)) == 0 {
+            fat[i] = 0xFF;
+            fat[i + 1] = 0xFF;
+            return Some(i as usize);
+        }
+    }
+    None
 }
 
 fn read_fat(fat_addr: usize, fat_offset: usize) -> u16 {
@@ -131,12 +172,14 @@ fn read_fat(fat_addr: usize, fat_offset: usize) -> u16 {
     return ((fat[byte_offset + 1] as u16) << 8) | (fat[byte_offset] as u16);
 }
 
-pub fn get_sector_from_cluster(sector_addr: usize, cluster_num: usize) -> usize {
-    ((cluster_num - 2) * BYTES_PER_SECTOR) + sector_addr
+pub fn get_sector_from_cluster(sector_addr: usize, cluster_num: usize) -> *mut u8 {
+    (((cluster_num - 2) * BYTES_PER_SECTOR) + sector_addr) as *mut u8
 }
 
 pub fn init(start_addr: usize) -> (usize, usize, usize) {
     let bpb = unsafe { &*(start_addr as *const BiosParameterBlock) };
+
+    // print_serial!("{:?}\n", bpb);
 
     let ebr = unsafe {
         &*((start_addr as *mut u8).offset(size_of::<BiosParameterBlock>() as isize)

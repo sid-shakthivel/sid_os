@@ -35,22 +35,22 @@ impl<T: core::fmt::Debug> TreeNode<T> {
     }
 
     pub fn add_child(&mut self, mut child: TreeNode<T>) {
-        if !child.has_parent {
-            print_serial!("ERROR: Child already has parent");
+        if child.has_parent {
+            print_serial!("ERROR: Child already has parent\n");
             return;
         }
         child.has_parent = true;
         self.children.push(child);
     }
 
-    pub fn traverse<F>(&self, func: F)
+    pub fn traverse<F>(&self, func: &F)
     where
         F: Fn(&TreeNode<T>),
     {
         func(self);
 
         for child in self.children.iter() {
-            child.traverse(&func);
+            child.traverse(func);
         }
     }
 }
