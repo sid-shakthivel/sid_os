@@ -8,9 +8,10 @@ Remember:
 ```
 
 Now: 
-- FAT filesystem driver
-- Figure out way to concatenate strings
 - Syscalls with file system
+
+Each process needs a hashmap of open files
+Syscalls needs a way of retreiving the current process to get its hashmap
 
 Refactoring:
 - Make children a pointer to a vector
@@ -22,6 +23,9 @@ New:
 - Sleep syscall
 - IPC with message queues
 - Events queue for eventual usermode stuff
+
+Potential Errors:
+- Removes clone from queue, list, etc
 
 Useful articles:
 https://fejlesztek.hu/create-a-fat-file-system-image-on-linux/

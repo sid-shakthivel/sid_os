@@ -14,34 +14,28 @@ use crate::print_serial;
 pub fn syscall_handler(registers: &InterruptStackFrame) -> i64 {
     let syscall_id = registers.rax;
 
-    // print_serial!("{} {}\n", syscall_id, registers.rbx);
-    print_serial!("New Syscall\n");
+    print_serial!("New Syscall: Id: {} Rbx: {}\n", syscall_id, registers.rbx);
 
+    // WARNING: lseek should be 8
     return match syscall_id {
-        4 => isatty(registers.rbx),
+        0 => read(registers.rbx, registers.rcx as *mut u8, registers.rdx),
+        1 => write(registers.rbx, registers.rcx as *mut u8, registers.rdx),
+        2 => open(registers.rbx, registers.rcx),
+        3 => close(registers.rbx),
         8 => allocate_pages(registers.rbx),
-        9 => write(registers.rbx, registers.rcx as *mut u8, registers.rdx),
+        9 => lseek(registers.rbx, registers.rcx as isize, registers.rdx),
+        56 => exit(),
+        350 => getpid(),
+        351 => isatty(registers.rbx),
         _ => {
-            print_serial!("Unknown syscall? {}\n", syscall_id);
-            panic!("");
+            panic!("Unknown syscall? {}\n", syscall_id);
             return 0;
         }
     };
 }
 
-fn isatty(file: usize) -> i64 {
-    if file == 0 || file == 1 || file == 2 {
-        return 1;
-    }
-    return -1;
-}
-
-fn allocate_pages(pages_required: usize) -> i64 {
-    let address = PAGE_FRAME_ALLOCATOR
-        .lock()
-        .alloc_page_frames(pages_required);
-    PAGE_FRAME_ALLOCATOR.free();
-    address as i64
+fn read(file: usize, buffer: *mut u8, length: usize) -> i64 {
+    0
 }
 
 /*
@@ -76,4 +70,39 @@ fn write(file: usize, buffer: *mut u8, length: usize) -> i64 {
     }
 
     length as i64
+}
+
+fn open(file: usize, flags: usize) -> i64 {
+    0
+}
+
+fn close(file: usize) -> i64 {
+    0
+}
+
+fn lseek(file: usize, offset: isize, whence: usize) -> i64 {
+    0
+}
+
+fn exit() -> i64 {
+    0
+}
+
+fn isatty(file: usize) -> i64 {
+    if file == 0 || file == 1 || file == 2 {
+        return 1;
+    }
+    return -1;
+}
+
+fn getpid() -> i64 {
+    0
+}
+
+fn allocate_pages(pages_required: usize) -> i64 {
+    let address = PAGE_FRAME_ALLOCATOR
+        .lock()
+        .alloc_page_frames(pages_required);
+    PAGE_FRAME_ALLOCATOR.free();
+    address as i64
 }

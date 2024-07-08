@@ -21,7 +21,7 @@ impl<T> ListNode<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct List<T: 'static> {
     pub head: Option<*mut ListNode<T>>,
     pub tail: Option<*mut ListNode<T>>,

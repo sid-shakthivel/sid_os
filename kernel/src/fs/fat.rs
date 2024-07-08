@@ -203,50 +203,5 @@ pub fn init(start_addr: usize) -> (usize, usize, usize) {
 
     let ds_addr: usize = convert_sector_to_bytes(rd_size) + rd_addr;
 
-    // let mut addr = rd_addr as *const u8;
-
-    // unsafe {
-    //     for i in 1..5 {
-    //         let file_entry = &*(addr as *const FileEntry);
-    //         print_serial!("{:?}\n", file_entry);
-
-    //         let filename = string::convert_utf8_to_trimmed_string(&file_entry.filename);
-
-    //         print_serial!("{}\n", filename);
-
-    //         if (file_entry.attributes & 0x10) == 0x10 {
-    //             print_serial!("tis a directory\n");
-
-    //             let mut test_addr =
-    //                 get_sector_from_cluster(ds_addr, file_entry.cluster_low as usize);
-    //             test_addr = test_addr.add(2 * size_of::<FileEntry>());
-
-    //             print_serial!("so its {} {}\n", file_entry.cluster_low, *test_addr);
-
-    //             let test_file_entry = &*(test_addr as *const FileEntry);
-
-    //             let test_filename =
-    //                 string::convert_utf8_to_trimmed_string(&test_file_entry.filename);
-
-    //             print_serial!("{}\n", test_filename);
-
-    //             let test = get_next_cluster(fat_addr, file_entry.cluster_low as usize).unwrap();
-    //         } else {
-    //             let ptr = kmalloc(10);
-
-    //             let cluster_addr =
-    //                 get_sector_from_cluster(ds_addr, file_entry.cluster_low as usize);
-
-    //             core::ptr::copy(cluster_addr as *mut u8, ptr as *mut u8, 10);
-    //             let c_str = CStr::from_ptr(ptr as *const i8);
-    //             let test = c_str.to_str().unwrap().trim();
-
-    //             print_serial!("{}\n", test);
-    //         }
-
-    //         addr = addr.add(i * size_of::<FileEntry>());
-    //     }
-    // }
-
     return (fat_addr, rd_addr, ds_addr);
 }

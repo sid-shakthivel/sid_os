@@ -134,6 +134,7 @@ impl<T: Clone> PriorityQueue<T> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Queue<T: 'static> {
     pub list: List<T>,
 }
@@ -144,8 +145,6 @@ impl<T: Clone> Queue<T> {
     }
 
     pub fn enqueue(&mut self, payload: T) {
-        // let addr = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap() as usize;
-        // PAGE_FRAME_ALLOCATOR.free();
         let addr = kmalloc(core::mem::size_of::<ListNode<T>>()) as usize;
         self.list.push_back(payload, addr);
     }

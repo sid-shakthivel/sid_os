@@ -94,13 +94,14 @@ impl Vfs {
             };
 
             let filename = string::convert_utf8_to_trimmed_string(&file_entry.filename);
+            let ext = string::convert_utf8_to_trimmed_string(&file_entry.ext);
 
             if filename.starts_with(".") {
                 addr = unsafe { addr.add(size_of::<fat::FileEntry>()) };
                 continue;
             }
 
-            let file = File::new(
+            let mut file = File::new(
                 filename,
                 file_entry.size as usize,
                 file_type,
@@ -117,6 +118,24 @@ impl Vfs {
                     );
                 }
                 FileType::File => {
+                    unsafe {
+                        for byte in FILE_NAME_BUFFER.iter_mut() {
+                            *byte = 0;
+                        }
+                    }
+
+                    let combined_str = unsafe {
+                        match string::concatenate_filename_ext(filename, ext, &mut FILE_NAME_BUFFER)
+                        {
+                            Ok(result) => result,
+                            Err(error) => {
+                                panic!("Error: {}", error);
+                            }
+                        }
+                    };
+
+                    file.name = combined_str;
+
                     current_node.add_child(TreeNode::new(file));
                 }
                 _ => {}
@@ -276,3 +295,4 @@ impl Vfs {
 }
 
 pub static VFS: Lock<Vfs> = Lock::new(Vfs::new());
+static mut FILE_NAME_BUFFER: [u8; 32] = [0u8; 32];
