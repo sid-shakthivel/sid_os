@@ -11,33 +11,17 @@ Now:
 - FAT filesystem driver
 - Figure out way to concatenate strings
 - Syscalls with file system
-- IPC with message queues
-- Events queue for eventual usermode stuff
-- Add back nicer window design
+
+Refactoring:
+- Make children a pointer to a vector
+- When deleting Set all FAT entries in file's cluster chain to zero
 - Rewrite the FileEntry::new() function
-
-Where does font= come from? not in makefile
-
-int send_message(int cpid, int pid, char *ptr)
-{
-    int64_t result;
-    asm volatile("mov %1, %%ebx \n\t\
-        mov %2, %%ecx \n\t\
-        mov %3, %%edx \n\t\
-        mov $20, %%eax \n\t\
-        int $0x80 \n\t\
-        "
-                 : "=r"(result)
-                 : "r"(cpid), "r"(pid), "m"(ptr));
-    return (int)result;
-}
+- Add back nicer window design
 
 New:
-- Sleep syscall thing
-- Switch
-
-Later:
-- Add more comments everywhere
+- Sleep syscall
+- IPC with message queues
+- Events queue for eventual usermode stuff
 
 Useful articles:
 https://fejlesztek.hu/create-a-fat-file-system-image-on-linux/
@@ -64,3 +48,19 @@ ln -s /usr/local/bin/x86_64-elf-ranlib x86_64-sidos-ranlib
 liballoc
 
 ./newlib-4.1.0/newlib/libc/sys/sidos/crt0.c
+
+Where does font= come from? not in makefile
+
+int send_message(int cpid, int pid, char *ptr)
+{
+    int64_t result;
+    asm volatile("mov %1, %%ebx \n\t\
+        mov %2, %%ecx \n\t\
+        mov %3, %%edx \n\t\
+        mov $20, %%eax \n\t\
+        int $0x80 \n\t\
+        "
+                 : "=r"(result)
+                 : "r"(cpid), "r"(pid), "m"(ptr));
+    return (int)result;
+}

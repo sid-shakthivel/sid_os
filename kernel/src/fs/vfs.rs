@@ -13,7 +13,7 @@ pub enum FileType {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct File {
+pub struct File {
     name: &'static str,
     size: usize,
     flags: usize,
@@ -78,7 +78,10 @@ impl Vfs {
         for i in 0..ENTRIES_PER_CLUSTER {
             match unsafe { *addr } {
                 0 => return,
-                0xE5 => continue,
+                0xE5 => {
+                    addr = unsafe { addr.add(size_of::<fat::FileEntry>()) };
+                    continue;
+                }
                 _ => {}
             }
 
@@ -90,8 +93,15 @@ impl Vfs {
                 _ => panic!("Error: Unknown file type encountered"),
             };
 
+            let filename = string::convert_utf8_to_trimmed_string(&file_entry.filename);
+
+            if filename.starts_with(".") {
+                addr = unsafe { addr.add(size_of::<fat::FileEntry>()) };
+                continue;
+            }
+
             let file = File::new(
-                string::convert_utf8_to_trimmed_string(&file_entry.filename),
+                filename,
                 file_entry.size as usize,
                 file_type,
                 file_entry.cluster_low as usize,
@@ -133,7 +143,6 @@ impl Vfs {
             let file_entry = unsafe { &*(addr as *const fat::FileEntry) };
 
             if file_entry.cluster_low == file.current_cluster as u16 {
-                // Set all FAT entries in file's cluster chain to zero
                 unsafe {
                     core::ptr::write(addr as *mut u8, 0xE5);
                 }
@@ -226,23 +235,37 @@ impl Vfs {
         }
     }
 
-    pub fn find(&self, filepath: &str) {
+    pub fn open(&self, filepath: &str) -> File {
         let is_absolute = filepath.starts_with("/");
 
         assert!(is_absolute, "Error: Filename must be absolute");
 
-        let mut parts: [&str; string::MAX_PARTS] = [""; string::MAX_PARTS];
+        let cleaned_filepath: &str = &filepath[1..filepath.len()];
+        let mut filepath_components = cleaned_filepath.split("/");
 
-        let count = string::split_path(filepath, &mut parts.clone());
-
-        for i in 0..count {
-            print_serial!("{}\n", &parts[i]);
+        let mut current_node = self.root.clone();
+        for component in filepath_components {
+            if let Some(node) = self.find(component, &current_node) {
+                current_node = node;
+            }
         }
+
+        let file = unsafe { &*current_node.payload };
+        return file.clone();
+    }
+
+    fn find(&self, filename: &str, current_node: &TreeNode<File>) -> Option<TreeNode<File>> {
+        for child in current_node.children.iter() {
+            let file = unsafe { &*child.payload };
+            if file.name == filename {
+                return Some(child.clone());
+            }
+        }
+
+        None
     }
 
     pub fn print(&self) {
-        print_serial!("about to print\n");
-
         fn print_node(node: &TreeNode<File>) {
             let file = unsafe { &*node.payload };
             print_serial!("{:?}\n", file);
@@ -250,15 +273,6 @@ impl Vfs {
 
         self.root.traverse(&print_node);
     }
-
-    // pub fn find(&mut self, filename: &str) -> Option<File> {
-    //     fn print_node<T: core::fmt::Debug>(node: &TreeNode<T>) {
-    //         print_serial!("{:?}", node.payload);
-    //     }
-
-    //     self.root.traverse(print_node);
-    //     None
-    // }
 }
 
 pub static VFS: Lock<Vfs> = Lock::new(Vfs::new());

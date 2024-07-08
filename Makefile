@@ -13,8 +13,8 @@ run-bochs: all
 
 all:
 	# Replace filesystem
-	# rm -f isodir/modules/fs.img
-	# cp res/fs.img isodir/modules
+	rm -f isodir/modules/fs.img
+	cp res/fs.img isodir/modules
 
 	# Compile syscalls
 	cd $(SYSCALLS) && make

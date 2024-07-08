@@ -10,6 +10,11 @@ pub fn init(start_addr: usize) {
     VFS.lock().init(values);
     VFS.free();
 
-    VFS.lock().print();
+    // VFS.lock().print();
+    // VFS.free();
+
+    // print_serial!("attempting to find\n");
+
+    VFS.lock().open("/TESTDIR/B");
     VFS.free();
 }
