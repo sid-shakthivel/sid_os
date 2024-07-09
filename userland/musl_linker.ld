@@ -4,7 +4,7 @@ OUTPUT_FORMAT(elf64-x86-64)
 
 SECTIONS
 {
-    . = 0x5000000; 
+    . = 0x8000000; 
 
     .text BLOCK(4K) : ALIGN(4K)
     {

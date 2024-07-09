@@ -1,9 +1,9 @@
 use core::intrinsics::size_of;
 
 use crate::fs::fat::{self, BYTES_PER_CLUSTER};
-use crate::print_serial;
 use crate::utils::{self, string};
 use crate::{ds::tree::TreeNode, utils::spinlock::Lock};
+use crate::{either, print_serial};
 
 #[derive(Copy, PartialEq, Clone, Debug)]
 pub enum FileType {
@@ -12,10 +12,10 @@ pub enum FileType {
     Syslink,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct File {
     name: &'static str,
-    size: usize,
+    pub size: usize,
     flags: usize,
     id: usize,
     offset: usize,
@@ -151,7 +151,7 @@ impl Vfs {
         }
     }
 
-    fn delete_file_from_disk(&self, file: &File, parent: &File) {
+    fn delete_file_from_disk(&mut self, file: &File, parent: &File) {
         let mut addr = fat::get_sector_from_cluster(self.fat_addr, parent.current_cluster);
 
         if parent.name == "root" {
@@ -169,9 +169,16 @@ impl Vfs {
 
             addr = unsafe { addr.add(size_of::<fat::FileEntry>()) };
         }
+
+        // Rebuild filesystem
+
+        let addr = self.rd_addr as *const u8;
+        let current_node = &mut self.root.clone();
+        self.build_vfs(addr, current_node);
+        self.root = current_node.clone();
     }
 
-    fn write_file_to_disk(&self, file: &File, parent: &File) {
+    fn write_file_to_disk(&mut self, file: &File, parent: &File) {
         let mut addr = fat::get_sector_from_cluster(self.fat_addr, parent.current_cluster);
 
         if parent.name == "root" {
@@ -189,9 +196,14 @@ impl Vfs {
 
             addr = unsafe { addr.add(size_of::<fat::FileEntry>()) };
         }
+
+        let addr = self.rd_addr as *const u8;
+        let current_node = &mut self.root.clone();
+        self.build_vfs(addr, current_node);
+        self.root = current_node.clone();
     }
 
-    fn write_file(&self, file: &mut File, mut buffer: *mut u8, length: usize) {
+    pub fn write_file(&self, file: &mut File, mut buffer: *mut u8, length: usize) {
         if file.f_type == FileType::Directory {
             return;
         }
@@ -200,8 +212,8 @@ impl Vfs {
         let mut current_cluster = Some(file.current_cluster);
         let mut previous_cluster = file.current_cluster;
 
-        // TODO: Need to update the file entry thing (could be a property of the file)
-        file.size = length;
+        // TODO: Need to update the file_entry thing (could be a property of the file)
+        file.size = either!(file.size > length => file.size; length);
 
         while size_left > 0 {
             let bytes_to_copy = size_left.min(BYTES_PER_CLUSTER);
@@ -233,14 +245,14 @@ impl Vfs {
         }
     }
 
-    fn read_file(&self, file: &File, buffer: *mut u8) {
+    pub fn read_file(&self, file: &File, buffer: *mut u8, length: usize) {
         if file.f_type == FileType::Directory {
             return;
         }
 
         let mut current_cluster = Some(file.current_cluster);
 
-        let mut size_left = file.size;
+        let mut size_left = length;
 
         while let Some(cluster) = current_cluster {
             let cluster_addr = fat::get_sector_from_cluster(self.fat_addr, cluster);
@@ -266,6 +278,8 @@ impl Vfs {
         for component in filepath_components {
             if let Some(node) = self.find(component, &current_node) {
                 current_node = node;
+            } else {
+                panic!("Error: File not found");
             }
         }
 

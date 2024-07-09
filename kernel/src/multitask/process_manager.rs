@@ -27,6 +27,15 @@ impl ProcessManager {
         self.tasks.enqueue(process, converted_priority);
     }
 
+    pub fn get_current_process(&mut self) -> &mut Process {
+        self.tasks.peek()
+    }
+
+    // WARNING: This may not work
+    pub fn remove_process(&mut self) {
+        self.tasks.dequeue();
+    }
+
     pub fn switch_process(&mut self, old_rsp: usize) -> usize {
         if self.is_from_kernel {
             self.is_from_kernel = false;
@@ -37,12 +46,12 @@ impl ProcessManager {
             if let Some(mut process) = self.tasks.dequeue() {
                 let converted_priority = ProcessPriority::convert(process.priority);
                 process.rsp = old_rsp as *const usize;
-                // print_serial!("process: {:?}\n", process);
                 self.tasks.enqueue(process, converted_priority);
             }
         }
 
         if self.tasks.is_empty() {
+            self.is_from_kernel = true;
             return old_rsp;
         } else {
             let next_process = self.tasks.peek();

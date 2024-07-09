@@ -1,7 +1,5 @@
 use crate::{
-    memory::{page_frame_allocator::PAGE_FRAME_ALLOCATOR, paging},
-    multitask::elf,
-    print_serial,
+    ds::hashmap::HashMap, either, fs::vfs::File, memory::{page_frame_allocator::PAGE_FRAME_ALLOCATOR, paging}, multitask::elf, print_serial
 };
 
 // The entrypoint for each user mode process
@@ -18,6 +16,7 @@ pub struct Process {
     pub rsp: *const usize,
     pub priority: ProcessPriority,
     pub p4: usize,
+    pub fdt: HashMap<File>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -34,17 +33,6 @@ impl ProcessPriority {
             Self::Low => 10,
         }
     }
-}
-
-#[macro_export]
-macro_rules! either {
-    ($test:expr => $true_expr:expr; $false_expr:expr) => {
-        if $test {
-            $true_expr
-        } else {
-            $false_expr
-        }
-    };
 }
 
 // multiboot data defines the address of the process followed by its size
@@ -93,11 +81,14 @@ impl Process {
             rsp = rsp.offset(-21);
         }
 
+        let fdt = HashMap::<File>::new();
+
         Process {
             pid,
             rsp,
             priority: either!(is_user => ProcessPriority::Low; ProcessPriority::High),
             p4,
+            fdt
         }
     }
 }

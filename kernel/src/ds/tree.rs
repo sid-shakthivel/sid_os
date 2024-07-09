@@ -1,5 +1,6 @@
 use super::vec::DynamicArray;
 use crate::{memory::allocator::kmalloc, print_serial};
+use core::mem::size_of;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TreeNode<T: core::fmt::Debug> {
@@ -18,7 +19,7 @@ impl<T: core::fmt::Debug> TreeNode<T> {
     }
 
     pub fn new(payload: T) -> TreeNode<T> {
-        let payload_ptr = kmalloc(core::mem::size_of::<T>()) as *mut T;
+        let payload_ptr = kmalloc(size_of::<T>()) as *mut T;
         unsafe {
             core::ptr::write(payload_ptr, payload);
         }

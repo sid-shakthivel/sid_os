@@ -1,9 +1,4 @@
 #include <stdio.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <string.h>
-#include <stdlib.h>
 
 int main()
 {
@@ -24,7 +19,6 @@ int main()
     //              : "r"(13), "m"(ptr), "r"(1));
 
     // lseek(0, 0, 0);
-    stat("hello", NULL);
 
     for (;;)
     {

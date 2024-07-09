@@ -8,24 +8,20 @@ Remember:
 ```
 
 Now: 
-- Syscalls with file system
-
-Each process needs a hashmap of open files
-Syscalls needs a way of retreiving the current process to get its hashmap
+- Get musl working
+- lseek
+- Change the hashmap to *mut T and no pointer for the queue
 
 Refactoring:
-- Make children a pointer to a vector
 - When deleting Set all FAT entries in file's cluster chain to zero
 - Rewrite the FileEntry::new() function
 - Add back nicer window design
 
 New:
 - Sleep syscall
+- Continue syscalls
 - IPC with message queues
 - Events queue for eventual usermode stuff
-
-Potential Errors:
-- Removes clone from queue, list, etc
 
 Useful articles:
 https://fejlesztek.hu/create-a-fat-file-system-image-on-linux/
@@ -42,6 +38,11 @@ export CXX=x86_64-elf-g++
 export AR=x86_64-elf-ar
 export RANLIB=x86_64-elf-ranlib
 export LD=x86_64-elf-ld
+
+export CC=x86_64-sidos-gcc
+export ARCH = x86_64
+export CROSS_COMPILE=x86_64-sidos-
+./configure --target=x86_64-sidos --build=x86_64-sidos --host=x86_64-sidos --prefix=/Users/siddharth/Code/rust/sid_os/userland/musl/build  --enable-debug
 
 ln -s /usr/local/bin/x86_64-elf-ar x86_64-sidos-ar       
 ln -s /usr/local/bin/x86_64-elf-as x86_64-sidos-as

@@ -171,4 +171,17 @@ impl<T: Clone> Queue<T> {
         let value = self.list.head.expect("ERROR: Queue is empty");
         return unsafe { &mut (*value).payload };
     }
+
+    pub fn find_where<F>(&self, func: &F, key: usize) -> Option<usize>
+    where
+        F: Fn(&ListNode<T>, usize) -> bool,
+    {
+        for (i, node) in self.list.into_iter().enumerate() {
+            if func(node, key) {
+                return Some(i);
+            }
+        }
+
+        None
+    }
 }
