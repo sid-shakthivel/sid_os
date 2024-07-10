@@ -13,14 +13,14 @@ run-bochs: all
 
 all:
 	# Replace filesystem
-	rm -f isodir/modules/fs.img
-	cp res/fs.img isodir/modules
+	# rm -f isodir/modules/fs.img
+	# cp res/fs.img isodir/modules
 
 	# Compile syscalls
-	cd $(SYSCALLS) && make
+	cd $(SYSCALLS) && make 
 
 	# Userspace modules
-	# cd $(USERLAND_MODULE_1) && make 
+	cd $(USERLAND_MODULE_1) && make all
 
 	# cd $(USERLAND_MODULE_3) && make generic
 	# rm -f $(shell pwd)/isodir/modules/luac

@@ -40,9 +40,9 @@ export RANLIB=x86_64-elf-ranlib
 export LD=x86_64-elf-ld
 
 export CC=x86_64-sidos-gcc
-export ARCH = x86_64
+export ARCH=x86_64
 export CROSS_COMPILE=x86_64-sidos-
-./configure --target=x86_64-sidos --build=x86_64-sidos --host=x86_64-sidos --prefix=/Users/siddharth/Code/rust/sid_os/userland/musl/build  --enable-debug
+../configure --target=x86_64-sidos --build=x86_64-sidos --host=x86_64-sidos --prefix=/Users/siddharth/Code/rust/sid_os/userland/musl/sidos-out  --enable-debug  CFLAGS='-DSYSCALL_NO_TLS'
 
 ln -s /usr/local/bin/x86_64-elf-ar x86_64-sidos-ar       
 ln -s /usr/local/bin/x86_64-elf-as x86_64-sidos-as

@@ -96,3 +96,15 @@ int isatty(int file)
                  : "r"(file));
     return (int)result;
 }
+
+// void *liballoc_alloc(int pages)
+// {
+//     int64_t result;
+//     asm volatile("mov %1, %%ebx \n\t\
+//                  mov $352, %%rax \n\t\
+//                  int $0x80 \n\t\
+//                  "
+//                  : "=r"(result)
+//                  : "r"(pages));
+//     return (void *)result;
+// }

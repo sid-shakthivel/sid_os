@@ -1,5 +1,4 @@
 ENTRY(_start)
-STARTUP(../libc/build/x86_64-sidos/lib/crt0.o)
 OUTPUT_FORMAT(elf64-x86-64)
 
 SECTIONS
@@ -38,17 +37,11 @@ SECTIONS
         *(.bss) *(.bss.*)
     }
 
-    .init_array BLOCK(4K) : ALIGN(4K)
+        /* remove unnecessary bits */
+    /DISCARD/ :
 	{
-		__init_array_start = .;
-		KEEP (*(.ctor*))
-		__init_array_end = .;
-	}
-
-	.fini_array BLOCK(4K) : ALIGN(4K)
-	{
-		__fini_array_start = .;
-		KEEP (*(.dtor*))
-		__fini_array_end = .;
+		*(.comment)
+		*(.note.gnu.build-id)
+		*(.gnu.build.attributes)
 	}
 }

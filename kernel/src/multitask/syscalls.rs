@@ -31,12 +31,12 @@ enum OpenFlags {
 pub fn syscall_handler(registers: &InterruptStackFrame) -> i64 {
     let syscall_id = registers.rax;
 
-    print_serial!("New Syscall: Id: {} Rbx: {}\n", syscall_id, registers.rbx);
+    print_serial!("registers: {:?}\n", registers);
 
     // WARNING: lseek should be 8
     return match syscall_id {
         0 => read(registers.rbx, registers.rcx as *mut u8, registers.rdx),
-        1 => write(registers.rbx, registers.rcx as *mut u8, registers.rdx),
+        1 => write(registers.rdi, registers.rsi as *mut u8, registers.rdx),
         2 => open(registers.rbx as *mut u8, registers.rcx),
         3 => close(registers.rbx),
         8 => allocate_pages(registers.rbx),
@@ -176,6 +176,8 @@ fn getpid() -> i64 {
 }
 
 fn allocate_pages(pages_required: usize) -> i64 {
+    print_serial!("allocating {}\n", pages_required);
+
     let address = PAGE_FRAME_ALLOCATOR
         .lock()
         .alloc_page_frames(pages_required);

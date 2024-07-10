@@ -141,7 +141,9 @@ pub extern "C" fn exception_handler(stack_frame: &StackFrame, exception_id: usiz
         _ => {}
     }
 
-    panic!("{:?}\n", stack_frame);
+    print_serial!("{:?}\n", stack_frame);
+
+    panic!("Unhandled exception: {}", exception_id);
 }
 
 pub extern "C" fn test_syscall_handler(stack_frame: &InterruptStackFrame) -> isize {

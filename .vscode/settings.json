@@ -18,7 +18,8 @@
         "ratio": "c",
         "__locale": "c",
         "chrono": "c",
-        "functional": "c"
+        "functional": "c",
+        "unistd.h": "c"
     },
     "rust-analyzer.cargo.target": "x86_64-sid_os-none",
 }

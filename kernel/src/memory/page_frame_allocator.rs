@@ -63,8 +63,6 @@ impl PageFrameAllocator {
                     return Some((*page_frame).get_address() as *mut usize);
                 }
             } else if (self.current_page < self.memory_end) {
-                print_serial!("{:#X}\n", self.current_page);
-
                 self.current_page += paging::PAGE_SIZE;
                 return Some(self.current_page as *mut usize);
             }
