@@ -197,7 +197,28 @@ pub extern "C" fn exception_with_error_handler(
     exception_id: usize,
     error_code: usize,
 ) {
+    print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
+
     match exception_id {
+        13 => {
+            let external = error_code & 0x1 != 0;
+            let idt = error_code & 0x2 != 0;
+            let ldt = error_code & 0x4 != 0;
+            let segment_selector_index = (error_code >> 3) & 0x1FFF;
+
+            print_serial!(
+                "General Protection Fault Error Code: 0x{:08x}\n",
+                error_code
+            );
+            
+            print_serial!("External Event: {}\n", external);
+            print_serial!(
+                "Descriptor Location: {}\n",
+                if idt { "IDT" } else { "GDT/LDT" }
+            );
+            print_serial!("Table Indicator: {}\n", if ldt { "LDT" } else { "GDT" });
+            print_serial!("Segment Selector Index: 0x{:04x}\n", segment_selector_index);
+        }
         14 => {
             // Handle page fault by displaying which flags are set within error code
             print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
@@ -211,7 +232,6 @@ pub extern "C" fn exception_with_error_handler(
         _ => {}
     }
 
-    print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
     panic!("{:?}\n", stack_frame);
 
     loop {}

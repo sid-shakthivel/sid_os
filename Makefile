@@ -17,10 +17,10 @@ all:
 	# cp res/fs.img isodir/modules
 
 	# Compile syscalls
-	cd $(SYSCALLS) && make 
+	# cd $(SYSCALLS) && make 
 
 	# Userspace modules
-	cd $(USERLAND_MODULE_1) && make all
+	# cd $(USERLAND_MODULE_1) && make all
 
 	# cd $(USERLAND_MODULE_3) && make generic
 	# rm -f $(shell pwd)/isodir/modules/luac

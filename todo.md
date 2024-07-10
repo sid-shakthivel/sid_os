@@ -7,11 +7,9 @@ Remember:
     let val = unsafe { ptr.read_unaligned() };
 ```
 
-sidos-out in userland is normal
-sidos-out in musl is no sse
-
 Now: 
-- Get musl working
+- Fix exceptions isr stuff
+- Fix bochs sse
 - lseek
 - Change the hashmap to *mut T and no pointer for the queue
 

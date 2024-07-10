@@ -6,9 +6,7 @@
 
 int main()
 {
-    asm volatile("xchg %bx, %bx");
-
-    printf("Works\n");
+    printf("Ok ok\n");
 
     // puts("Dono");
 

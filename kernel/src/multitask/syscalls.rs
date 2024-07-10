@@ -51,7 +51,8 @@ pub struct Iovec {
 pub fn syscall_handler(registers: &SyscallStackFrame) -> i64 {
     let syscall_id = registers.rax;
 
-    print_serial!("id: {}\n registers: {:?}\n", syscall_id, registers);
+    print_serial!("syscall id: {}\n", syscall_id);
+    // print_serial!("id: {} registers: {:?}\n", syscall_id, registers);
 
     // WARNING: lseek should be 8
     return match syscall_id {
@@ -206,7 +207,7 @@ fn mmap(addr: usize, length: usize, prot: usize, flags: usize, fd: i32, offset: 
 
     let adddr = kmalloc(length);
 
-    return adddr as i64
+    return adddr as i64;
 }
 
 fn brk(addr: usize) -> i64 {
@@ -218,9 +219,11 @@ fn ioctl(cmd: usize, arg: usize) -> i64 {
 }
 
 fn writev(fd: usize, iovec: *const Iovec, count: usize) -> i64 {
-    assert!(fd == 1, "Error: Writev not for stdout");
+    print_serial!("fd: {}\n", fd);
 
-    print_serial!("{} {}\n", fd, count);
+    assert!(fd == 1 || fd == 2, "Error: Writev not for stdout");
+
+    // print_serial!("{} {}\n", fd, count);
 
     let mut total_length = 0;
 
