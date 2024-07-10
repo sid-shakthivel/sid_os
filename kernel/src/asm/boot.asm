@@ -48,6 +48,16 @@ start:
     or eax, 0b111 ; Present, Writeable, User
     mov [p4_table + 511 * 8], eax
 
+    ; Enable SSE
+    mov eax, cr0
+    and eax, 0xFFFFFFFB    ; Clear EM (bit 2) to 0
+    or  eax, 0x00000002    ; Set MP (bit 1) to 1
+    mov cr0, eax
+
+    mov eax, cr4
+    or  eax, 0x00000600    ; Set OSFXSR (bit 9) and OSXMMEXCPT (bit 10) to 1
+    mov cr4, eax
+
     call enable_paging
 
     lgdt [gdt64.pointer] ; Load the new GDT

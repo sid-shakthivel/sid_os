@@ -8,7 +8,8 @@ use core::panic;
 
 use crate::fs::vfs::{Vfs, VFS};
 use crate::gfx::window::Window;
-use crate::interrupts::InterruptStackFrame;
+use crate::interrupts::{InterruptStackFrame, SyscallStackFrame};
+use crate::memory::allocator::kmalloc;
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::utils::{bitwise, string};
 use crate::{either, print_serial};
@@ -16,6 +17,19 @@ use crate::{either, print_serial};
 use super::PROCESS_MANAGER;
 
 pub static mut FILE_TABLE_COUNTER: usize = 0;
+
+#[repr(usize)]
+enum MemoryProtectionAttributes {
+    None = 0x00,
+    Read = 0x01,
+    Write = 0x02,
+}
+
+#[repr(usize)]
+enum MemoryMappingFlags {
+    MapPrivate = 0x02,
+    MapAnonymous = 0x20,
+}
 
 #[repr(usize)]
 enum OpenFlags {
@@ -28,23 +42,38 @@ enum OpenFlags {
     Append = 0b10000000000,  // 0x400
 }
 
-pub fn syscall_handler(registers: &InterruptStackFrame) -> i64 {
+#[repr(C)]
+pub struct Iovec {
+    pub base: *mut u8,
+    pub len: usize,
+}
+
+pub fn syscall_handler(registers: &SyscallStackFrame) -> i64 {
     let syscall_id = registers.rax;
 
-    print_serial!("registers: {:?}\n", registers);
+    print_serial!("id: {}\n registers: {:?}\n", syscall_id, registers);
 
     // WARNING: lseek should be 8
     return match syscall_id {
-        0 => read(registers.rbx, registers.rcx as *mut u8, registers.rdx),
+        0 => read(registers.rdi, registers.rsi as *mut u8, registers.rdx),
         1 => write(registers.rdi, registers.rsi as *mut u8, registers.rdx),
-        2 => open(registers.rbx as *mut u8, registers.rcx),
-        3 => close(registers.rbx),
-        8 => allocate_pages(registers.rbx),
-        9 => lseek(registers.rbx, registers.rcx as isize, registers.rdx),
-        19 => free_pages(registers.rbx, registers.rcx),
+        2 => open(registers.rdi as *mut u8, registers.rsi),
+        3 => close(registers.rdi),
+        8 => lseek(registers.rdi, registers.rsi as isize, registers.rdx),
+        9 => mmap(
+            registers.rdi,
+            registers.rsi,
+            registers.rdx,
+            registers.r10,
+            registers.r8 as i32,
+            registers.r9,
+        ),
+        12 => brk(registers.rdi),
+        16 => ioctl(registers.rdi, registers.rsi),
+        20 => writev(registers.rdi, registers.rsi as *const Iovec, registers.rdx),
         56 => exit(),
         350 => getpid(),
-        351 => isatty(registers.rbx),
+        351 => isatty(registers.rdi),
         _ => {
             panic!("Unknown syscall? {}\n", syscall_id);
             return 0;
@@ -153,6 +182,61 @@ fn close(file: usize) -> i64 {
 
 fn lseek(file: usize, offset: isize, whence: usize) -> i64 {
     0
+}
+
+fn mmap(addr: usize, length: usize, prot: usize, flags: usize, fd: i32, offset: usize) -> i64 {
+    assert!(addr == 0, "Error: Cannot set addr");
+    assert!(fd == -1, "Error: Cannot currently set fd");
+
+    assert!(
+        prot == (MemoryProtectionAttributes::Read as usize)
+            || prot
+                == (MemoryProtectionAttributes::Read as usize
+                    | MemoryProtectionAttributes::Write as usize)
+            || prot == (MemoryProtectionAttributes::None as usize)
+    );
+
+    assert!(
+        flags
+            == (MemoryMappingFlags::MapAnonymous as usize
+                | MemoryMappingFlags::MapPrivate as usize)
+    );
+
+    print_serial!("{} {} {} {} {} {}\n", addr, length, prot, flags, fd, offset);
+
+    let adddr = kmalloc(length);
+
+    return adddr as i64
+}
+
+fn brk(addr: usize) -> i64 {
+    -1
+}
+
+fn ioctl(cmd: usize, arg: usize) -> i64 {
+    0
+}
+
+fn writev(fd: usize, iovec: *const Iovec, count: usize) -> i64 {
+    assert!(fd == 1, "Error: Writev not for stdout");
+
+    print_serial!("{} {}\n", fd, count);
+
+    let mut total_length = 0;
+
+    for i in 0..count {
+        let iov = unsafe { &*iovec.offset(i as isize) };
+        let buffer = iov.base as *mut u8;
+        let length = iov.len;
+        total_length += length;
+
+        for j in 0..(length) {
+            let character = unsafe { *buffer.offset(j as isize) };
+            print_serial!("{}", character as char);
+        }
+    }
+
+    total_length as i64
 }
 
 fn exit() -> i64 {

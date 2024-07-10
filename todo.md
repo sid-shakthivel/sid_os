@@ -7,6 +7,9 @@ Remember:
     let val = unsafe { ptr.read_unaligned() };
 ```
 
+sidos-out in userland is normal
+sidos-out in musl is no sse
+
 Now: 
 - Get musl working
 - lseek
@@ -42,7 +45,7 @@ export LD=x86_64-elf-ld
 export CC=x86_64-sidos-gcc
 export ARCH=x86_64
 export CROSS_COMPILE=x86_64-sidos-
-../configure --target=x86_64-sidos --build=x86_64-sidos --host=x86_64-sidos --prefix=/Users/siddharth/Code/rust/sid_os/userland/musl/sidos-out  --enable-debug  CFLAGS='-DSYSCALL_NO_TLS'
+../configure --target=x86_64-sidos --build=x86_64-sidos --host=x86_64-sidos --prefix=/Users/siddharth/Code/rust/sid_os/userland/musl/sidos-out --disable-sse --enable-debug  CFLAGS='-DSYSCALL_NO_TLS'
 
 ln -s /usr/local/bin/x86_64-elf-ar x86_64-sidos-ar       
 ln -s /usr/local/bin/x86_64-elf-as x86_64-sidos-as
@@ -69,3 +72,17 @@ int send_message(int cpid, int pid, char *ptr)
                  : "r"(cpid), "r"(pid), "m"(ptr));
     return (int)result;
 }
+
+```
+char *ptr = "hello from c\n";
+int64_t result;
+
+asm volatile("mov %3, %%ebx \n\t\
+    mov %2, %%ecx \n\t\
+    mov %1, %%edx \n\t\
+    mov $1, %%eax \n\t\
+    syscall \n\t\
+    "
+                : "=r"(result)
+                : "r"(13), "m"(ptr), "r"(1));
+```

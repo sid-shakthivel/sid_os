@@ -105,6 +105,31 @@ pub struct InterruptStackFrame {
     ss: usize,
 }
 
+#[derive(Debug)]
+#[repr(C)]
+pub struct SyscallStackFrame {
+    pub r15: usize,
+    pub r14: usize,
+    pub r13: usize,
+    pub r12: usize,
+    pub r11: usize,
+    pub r10: usize,
+    pub r9: usize,
+    pub r8: usize,
+    pub rsi: usize,
+    pub rdi: usize,
+    pub rbp: usize,
+    pub rdx: usize,
+    pub rcx: usize,
+    pub rbx: usize,
+    pub rax: usize,
+    rip: usize,
+    cs: usize,
+    rflags: usize,
+    rsp: usize,
+    ss: usize,
+}
+
 #[derive(Clone, Copy, Debug)]
 enum PageFaultFlags {
     IsPresent, // Caused by non present page
@@ -146,7 +171,7 @@ pub extern "C" fn exception_handler(stack_frame: &StackFrame, exception_id: usiz
     panic!("Unhandled exception: {}", exception_id);
 }
 
-pub extern "C" fn test_syscall_handler(stack_frame: &InterruptStackFrame) -> isize {
+pub extern "C" fn test_syscall_handler(stack_frame: &SyscallStackFrame) -> isize {
     syscall_handler(stack_frame) as isize
 }
 

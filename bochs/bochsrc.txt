@@ -7,7 +7,7 @@
     boot:            cdrom
     log:             bochs/bochslog.txt
     clock:           sync=realtime, time0=local
-    cpu:             count=1, ips=1000000
+    cpu:             count=1, ips=1000000, sse=1, sse2=1, sse3=1, ssse3=1, sse4_1=1, sse4_2=1
     magic_break:     enabled=1
     port_e9_hack: enabled=1
     com1: enabled=1, mode=mouse
