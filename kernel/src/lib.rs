@@ -65,13 +65,9 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     // grub::bga_set_video_mode();
     // gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
 
-    // grub::initalise_userland(multiboot_info);
+    grub::initalise_userland(multiboot_info);
 
     interrupts::enable();
-
-    unsafe {
-        asm!("int $0x04");
-    }
 
     loop {}
 }

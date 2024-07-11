@@ -8,11 +8,11 @@ PREFIX = $(shell pwd)/cross
 
 ROOT = $(shell pwd)
 
-all: $(AUTOCONF) $(AUTOMAKE) $(BINUTILS) $(GCC)
+all: $(AUTOCONF) $(AUTOMAKE)
 
 $(AUTOCONF):
 	mkdir -p $(PREFIX) && \
-	curl -O -L http://mirror.hostiran.ir/gnu/gnu/autoconf/$(AUTOCONF).tar.gz && \
+	curl -O -L https://ftp.gnu.org/gnu/autoconf/autoconf-2.65.tar.gz && \
 	tar -xzf $(AUTOCONF).tar.gz && \
 	cd $(AUTOCONF) && \
 	./configure && \
@@ -22,7 +22,7 @@ $(AUTOCONF):
 
 $(AUTOMAKE):
 	mkdir -p $(PREFIX) && \
-	curl -O -L http://gnu.bardia.tech/gnu/automake/$(AUTOMAKE).tar.gz && \
+	curl -O -L https://ftp.gnu.org/gnu/automake/automake-1.11.tar.gz && \
 	tar -xzf $(AUTOMAKE).tar.gz && \
 	cd $(AUTOMAKE) && \
 	./configure && \

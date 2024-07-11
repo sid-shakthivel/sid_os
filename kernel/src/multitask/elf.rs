@@ -172,7 +172,7 @@ fn parse_program_headers(file_start: usize, elf_header: &ElfHeader, p4: usize) {
                     program_header.p_filesz,
                     program_header.p_memsz,
                     program_header.p_vaddr,
-                    p4
+                    p4,
                 );
             }
             _ => {}
@@ -185,7 +185,7 @@ fn load_segment_into_memory(
     filesz: usize,
     memsz: usize,
     v_address: usize,
-    p4: usize
+    p4: usize,
 ) -> usize {
     // Allocate appropriate amount of memory
     let rounded_size = page_frame_allocator::round_to_nearest_page(memsz);

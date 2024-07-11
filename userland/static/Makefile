@@ -10,13 +10,23 @@ LIBS = $(shell pwd)/../musl/sidos-out/lib
 CFLAGS = -no-pie -static-libgcc -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -Wall -Wextra -O0 -D_POSIX_SOURCE -I${LIB_HEADERS}
 LINKER_FLAGS = -no-pie -static-libgcc -nostdlib -z max-page-size=4096
 
-all: main.o
-	$(CC) -T ${LINKER_FILE} $(LINKER_FLAGS) -o static main.o -L$(LIBS) -lgcc $(LIBC) && \
-	rm -f ../../isodir/modules/static && \
-	mv static ../../isodir/modules
+TARGET = static
 
-main.o: main.c
-	$(CC) -c main.c -o main.o $(CFLAGS)
+SRCS = $(wildcard *.c)
+OBJS = $(SRCS:.c=.o)
+
+all: $(TARGET)
+	rm -f ../../isodir/modules/$(TARGET) && \
+	mv $(TARGET) ../../isodir/modules
+
+$(TARGET): $(OBJS)
+	$(CC) -T ${LINKER_FILE} $(LINKER_FLAGS) -o $(TARGET) $(OBJS) -L $(LIBS) -lgcc $(LIBC) 
+
+# main.o: main.c
+# 	$(CC) -c main.c -o main.o $(CFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 # PDCLib
 
@@ -85,4 +95,4 @@ main.o: main.c
 # 	rm -f ${OUTPUT}
 
 clean: 
-	rm -f main.o
+	rm -f $(OBJS) $(TARGET)

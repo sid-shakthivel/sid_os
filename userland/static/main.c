@@ -2,11 +2,15 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
-// #include "../syscalls/syscalls.h"
+#include "test.h"
 
 int main()
 {
-    printf("Ok ok\n");
+    // asm volatile("xchg %bx, %bx");
+
+    puts("In main");
+
+    // do_something();
 
     // puts("Dono");
 

@@ -20,7 +20,8 @@
         "chrono": "c",
         "functional": "c",
         "unistd.h": "c",
-        "lauxlib.h": "c"
+        "lauxlib.h": "c",
+        "libforth.h": "c"
     },
     "rust-analyzer.cargo.target": "x86_64-sid_os-none",
 }

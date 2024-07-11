@@ -195,9 +195,10 @@ pub extern "C" fn interrupt_handler(stack_frame: &InterruptStackFrame, interrupt
 pub extern "C" fn exception_with_error_handler(
     stack_frame: &StackFrame,
     exception_id: usize,
-    error_code: usize,
+    mut error_code: usize,
 ) {
     print_serial!("{}\n", EXCEPTION_MESSAGES[exception_id]);
+    print_serial!("{:?}\n", stack_frame);
 
     match exception_id {
         13 => {
@@ -210,7 +211,7 @@ pub extern "C" fn exception_with_error_handler(
                 "General Protection Fault Error Code: 0x{:08x}\n",
                 error_code
             );
-            
+
             print_serial!("External Event: {}\n", external);
             print_serial!(
                 "Descriptor Location: {}\n",
@@ -232,7 +233,7 @@ pub extern "C" fn exception_with_error_handler(
         _ => {}
     }
 
-    panic!("{:?}\n", stack_frame);
+    panic!("dono");
 
     loop {}
 }

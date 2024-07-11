@@ -24,7 +24,7 @@ macro_rules! setup_exception_with_e_handler {
                     "mov rdx, [rsp + 7*8]", // Load error code
                     "mov rdi, rsp", // Load ExceptionStackFrame
                     "mov rsi, {0}", // Load exception id
-                    "add rdi, 7*8",
+                    "add rdi, 8*8",
                     "sub rsp, 8", // Allign stack pointer
                     "cld",
                     "call {1}",
@@ -64,6 +64,7 @@ macro_rules! setup_interrupt_handler {
                     "push rsi",
                     "mov rdi, rsp",
                     "mov rsi, {0}",
+                    "add rdi, 7*8",
                     "cld",
                     "call {1}",
                     "pop rsi",

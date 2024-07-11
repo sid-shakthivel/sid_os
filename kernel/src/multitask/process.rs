@@ -1,5 +1,10 @@
 use crate::{
-    ds::hashmap::HashMap, either, fs::vfs::File, memory::{page_frame_allocator::PAGE_FRAME_ALLOCATOR, paging}, multitask::elf, print_serial
+    ds::hashmap::HashMap,
+    either,
+    fs::vfs::File,
+    memory::{page_frame_allocator::PAGE_FRAME_ALLOCATOR, paging},
+    multitask::elf,
+    print_serial,
 };
 
 // The entrypoint for each user mode process
@@ -88,7 +93,7 @@ impl Process {
             rsp,
             priority: either!(is_user => ProcessPriority::Low; ProcessPriority::High),
             p4,
-            fdt
+            fdt,
         }
     }
 }
