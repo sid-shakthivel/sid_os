@@ -5,6 +5,7 @@ pub mod ports;
 pub mod spinlock;
 pub mod string;
 pub mod wrapping_zero;
+pub mod rtc;
 
 #[macro_export]
 macro_rules! either {
