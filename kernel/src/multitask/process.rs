@@ -1,5 +1,5 @@
 use crate::{
-    ds::hashmap::HashMap,
+    ds::{hashmap::HashMap, queue::Queue},
     either,
     fs::vfs::File,
     memory::{page_frame_allocator::PAGE_FRAME_ALLOCATOR, paging},
@@ -9,6 +9,23 @@ use crate::{
 
 // The entrypoint for each user mode process
 pub static USER_PROCESS_START_ADDRESS: usize = 0x8000000;
+
+#[derive(Debug, Copy, Clone)]
+pub struct Message {
+    pub sender_pid: usize,
+    pub receiver_pid: usize,
+    pub message: *const u8,
+    pub length: usize,
+    pub m_type: usize,
+    pub should_block: bool,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+#[allow(dead_code)]
+enum ProcessState {
+    Running,
+    Blocked,
+}
 
 /*
     Processes are running programs with an individual address space, stack and data which run in userspace
@@ -20,8 +37,10 @@ pub struct Process {
     pub pid: usize,
     pub rsp: *const usize,
     pub priority: ProcessPriority,
-    pub p4: usize,
+    p4: usize,
     pub fdt: HashMap<*mut File>,
+    pub state: ProcessState,
+    pub messages: Queue<Message>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -94,6 +113,16 @@ impl Process {
             priority: either!(is_user => ProcessPriority::Low; ProcessPriority::High),
             p4,
             fdt,
+            state: ProcessState::Running,
+            messages: Queue::<Message>::new(),
         }
+    }
+
+    pub fn block(&mut self) {
+        self.state = ProcessState::Blocked;
+    }
+
+    pub fn unblock(&mut self) {
+        self.state = ProcessState::Running;
     }
 }

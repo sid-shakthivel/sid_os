@@ -3,7 +3,10 @@ use crate::{
     print_serial,
 };
 
-use super::{psf::Font, BPP, PITCH};
+use super::{
+    psf::{Font, FONT},
+    BPP, PITCH,
+};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Rect {
@@ -60,28 +63,24 @@ impl Rect {
         text: &'static str,
         mut base_x: u16,
         base_y: u16,
-        font: &Font,
         fb_addr: usize,
         colour: u32,
     ) {
         for byte in text.as_bytes() {
-            self.draw_clipped_character(*byte as char, base_x, base_y, font, fb_addr, colour);
+            self.draw_clipped_character(*byte as char, base_x, base_y, fb_addr, colour);
             base_x += 8;
         }
     }
 
-    fn draw_clipped_character(
-        &self,
-        character: char,
-        x: u16,
-        y: u16,
-        font: &Font,
-        fb_addr: usize,
-        colour: u32,
-    ) {
+    fn draw_clipped_character(&self, character: char, x: u16, y: u16, fb_addr: usize, colour: u32) {
+        let font = FONT.lock();
+        FONT.free();
+
+        let font_metadate = unsafe { &*font.metadata_ptr };
+
         let glyph_address = (font.start_addr
-            + font.metadata.header_size
-            + (font.metadata.bytes_per_glyph * (character as u32)))
+            + font_metadate.header_size
+            + (font_metadate.bytes_per_glyph * (character as u32)))
             as *mut u8;
 
         for cy in 0..16 {
@@ -95,8 +94,8 @@ impl Rect {
                     unsafe { (*glyph_address.offset(cy as isize) as u16) & (1 << index) };
                 if glyph_offset > 0 {
                     let fb_offset = ((fb_addr as u32)
-                        + (adjusted_y as u32 * 4096)
-                        + ((adjusted_x as u32 * 32) / 8))
+                        + (adjusted_y as u32 * PITCH)
+                        + ((adjusted_x as u32 * BPP) / 8))
                         as *mut u32;
                     unsafe {
                         *fb_offset = colour;

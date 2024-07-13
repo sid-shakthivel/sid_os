@@ -29,7 +29,6 @@ pub struct WindowManager<'a> {
     mouse_coords: (u16, u16),
     fb_addr: usize,
     current_wid: i16,
-    font: Option<Font>,
     area: Rect,
     current_state: WMState,
     marker: core::marker::PhantomData<&'a Window>,
@@ -59,7 +58,6 @@ impl<'a> WindowManager<'a> {
             current_wid: 0,
             mouse_coords: (512, 384),
             drag_offset: (0, 0),
-            font: None,
             area,
             current_state: WMState::Idle,
             marker: core::marker::PhantomData,
@@ -68,11 +66,6 @@ impl<'a> WindowManager<'a> {
 
     pub fn set_fb_address(&mut self, address: usize) {
         self.fb_addr = address;
-    }
-
-    pub fn set_font(&mut self) {
-        let (font_start, font_ptr) = psf::get_font_data();
-        self.font = Some(Font::new(font_ptr, font_start));
     }
 
     pub fn add_window(&mut self, mut window: Window) -> i16 {
@@ -162,7 +155,7 @@ impl<'a> WindowManager<'a> {
             {
                 has_repainted = true;
                 // intersection_region.paint(window.colour, self.fb_addr);
-                window.paint_rect(&intersection_region, self.fb_addr, &self.font.unwrap());
+                window.paint_rect(&intersection_region, self.fb_addr);
                 break;
             }
         }
@@ -193,7 +186,7 @@ impl<'a> WindowManager<'a> {
                     .intersection(&window.generate_rect())
                 {
                     // intersection_region.paint(raised_window.colour, self.fb_addr);
-                    window.paint_rect(&intersection_region, self.fb_addr, &self.font.unwrap());
+                    window.paint_rect(&intersection_region, self.fb_addr);
                 }
             }
         }
@@ -214,7 +207,7 @@ impl<'a> WindowManager<'a> {
 
                 if (index == 0) {
                     // window.generate_rect().paint(window.colour, self.fb_addr);
-                    window.paint_rect(&window.generate_rect(), self.fb_addr, &self.font.unwrap());
+                    window.paint_rect(&window.generate_rect(), self.fb_addr);
                 } else {
                     let mut test_rects: Queue<Rect> = Queue::<Rect>::new();
 
@@ -230,7 +223,7 @@ impl<'a> WindowManager<'a> {
                     //     );
                     // }
 
-                    window.paint(&test_rects, self.fb_addr, &self.font.unwrap());
+                    window.paint(&test_rects, self.fb_addr);
 
                     test_rects.empty();
                 }
@@ -345,7 +338,7 @@ impl<'a> WindowManager<'a> {
                 Rect::split_rect_list(&mut clipping_rect, &mut self.dr_windows);
             }
 
-            window.paint(&self.dr_windows, self.fb_addr, &self.font.unwrap());
+            window.paint(&self.dr_windows, self.fb_addr);
 
             // for rect in self.dr_windows.list.into_iter() {
             // rect.payload.paint(window.colour, self.fb_addr);

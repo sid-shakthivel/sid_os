@@ -13,11 +13,11 @@ Now:
 Refactoring:
 - When deleting Set all FAT entries in file's cluster chain to zero
 - Rewrite the FileEntry::new() function
-- Add back nicer window design
+- General FAT systems
 
 New:
-- Change design to include top bar and general colour scheme
 - IPC with message queues and blocking processes
+- Usermode stuff for window management
 - Events queue for eventual usermode stuff
 
 Useful articles:

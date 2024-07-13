@@ -3,7 +3,12 @@
     Glyphs are bitmaps of 8*16
 */
 
+use crate::utils::spinlock::Lock;
+
 const PSF_MAGIC: u32 = 0x864ab572;
+
+pub const FONT_HEIGHT: u16 = 16;
+pub const FONT_WIDTH: u16 = 8;
 
 #[derive(Copy, Clone, Debug)]
 pub struct PsfFont {
@@ -17,20 +22,23 @@ pub struct PsfFont {
     width: u32,               // In pixels
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Font {
-    pub metadata: &'static PsfFont,
+    pub metadata_ptr: *const PsfFont,
     pub start_addr: u32,
 }
 
 impl Font {
-    pub fn new(metadata_ptr: *const PsfFont, start_addr: u32) -> Font {
-        let metadata = unsafe { &*(metadata_ptr) };
-
+    pub const fn new(metadata_ptr: *const PsfFont, start_addr: u32) -> Font {
         Font {
-            metadata,
+            metadata_ptr,
             start_addr,
         }
+    }
+
+    pub fn init(&mut self, metadata_ptr: *const PsfFont, start_addr: u32) {
+        self.metadata_ptr = metadata_ptr;
+        self.start_addr = start_addr;
     }
 }
 
@@ -49,9 +57,15 @@ impl PsfFont {
             "PsfFont bytes per glyph is not 16"
         );
 
-        assert!(self.height == 16, "PsfFont has not height of 16");
+        assert!(
+            self.height == FONT_HEIGHT as u32,
+            "PsfFont has not height of 16"
+        );
 
-        assert!(self.width == 8, "PsfFont has not width of 8");
+        assert!(
+            self.width == FONT_WIDTH as u32,
+            "PsfFont has not width of 8"
+        );
     }
 }
 
@@ -63,6 +77,8 @@ pub fn get_font_data() -> (u32, *const PsfFont) {
 
     (font_start, font_start as *const PsfFont)
 }
+
+pub static FONT: Lock<Font> = Lock::new(Font::new(core::ptr::null(), 0));
 
 extern "C" {
     pub(crate) static _binary_font_psf_end: usize;

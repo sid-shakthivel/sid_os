@@ -46,7 +46,7 @@ impl Window {
         Rect::new(self.y, self.y + self.height, self.x + self.width, self.x)
     }
 
-    pub fn paint(&self, dr: &Queue<Rect>, fb_addr: usize, font: &Font) {
+    pub fn paint(&self, dr: &Queue<Rect>, fb_addr: usize) {
         let mut rect = self.generate_rect();
 
         // Title bar
@@ -64,7 +64,6 @@ impl Window {
             self.x + ((self.width / 2) - (self.title.as_bytes().len() as u16 * 8) / 2);
         let text_start_y = self.y + (WINDOW_TITLE_HEIGHT - 16) / 2;
 
-        // print_serial!("{:?}\n", title_bar);
 
         for rect_node in dr.list.into_iter() {
             let current_rect = rect_node.payload;
@@ -79,14 +78,13 @@ impl Window {
                 self.title,
                 text_start_x,
                 text_start_y,
-                font,
                 fb_addr,
                 0xffffff,
             );
         }
     }
 
-    pub fn paint_rect(&self, dr: &Rect, fb_addr: usize, font: &Font) {
+    pub fn paint_rect(&self, dr: &Rect, fb_addr: usize) {
         let mut rect = self.generate_rect();
 
         // Title bar
@@ -99,8 +97,6 @@ impl Window {
             rect.right,
             self.x,
         );
-
-        // print_serial!("{:?} {:?}\n", title_bar, dr);
 
         let text_start_x =
             self.x + ((self.width / 2) - (self.title.as_bytes().len() as u16 * 8) / 2);
@@ -116,7 +112,6 @@ impl Window {
             self.title,
             text_start_x,
             text_start_y,
-            font,
             fb_addr,
             0xffffff,
         );
