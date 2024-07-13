@@ -2,7 +2,7 @@ use core::intrinsics::size_of;
 use core::panic;
 
 use crate::fs::fat::{self, BYTES_PER_CLUSTER};
-use crate::memory::allocator::kmalloc;
+use crate::memory::allocator::{kfree, kmalloc};
 use crate::utils::wrapping_zero::WrappingSubZero;
 use crate::utils::{self, string};
 use crate::{ds::tree::TreeNode, utils::spinlock::Lock};
@@ -98,14 +98,14 @@ impl Vfs {
 
             let file_entry = unsafe { &*(addr as *const fat::FileEntry) };
 
+            let filename = string::convert_utf8_to_trimmed_string(&file_entry.filename);
+            let ext = string::convert_utf8_to_trimmed_string(&file_entry.ext);
+
             let file_type = match file_entry.attributes {
                 0x10 => FileType::Directory,
                 0x20 => FileType::File,
-                _ => panic!("Error: Unknown file type encountered"),
+                _ => break,
             };
-
-            let filename = string::convert_utf8_to_trimmed_string(&file_entry.filename);
-            let ext = string::convert_utf8_to_trimmed_string(&file_entry.ext);
 
             if filename.starts_with(".") {
                 addr = unsafe { addr.add(size_of::<fat::FileEntry>()) };
@@ -135,9 +135,11 @@ impl Vfs {
                         }
                     }
 
+                    let test = kmalloc(32) as *mut u8;
+                    let hest = unsafe { core::slice::from_raw_parts_mut(test, 32) };
+
                     let combined_str = unsafe {
-                        match string::concatenate_filename_ext(filename, ext, &mut FILE_NAME_BUFFER)
-                        {
+                        match string::concatenate_filename_ext(filename, ext, hest) {
                             Ok(result) => result,
                             Err(error) => {
                                 panic!("Error: {}", error);
@@ -216,7 +218,7 @@ impl Vfs {
         self.root = current_node.clone();
     }
 
-    pub fn write_file(&self, file: &mut File, mut buffer: *mut u8, length: usize) {
+    pub fn write_file(&self, file: &mut File, mut buffer: *mut u8, length: usize, offset: usize) {
         if file.f_type == FileType::Directory {
             return;
         }
@@ -224,63 +226,103 @@ impl Vfs {
         let mut size_left = length;
         let mut current_cluster = Some(file.current_cluster);
         let mut previous_cluster = file.current_cluster;
+        let mut offset_left = offset;
 
         // TODO: Need to update the file_entry thing (could be a property of the file)
-        file.size = either!(file.size > length => file.size; length);
+        file.size = file.size.max(length + offset);
+
+        while let Some(cluster) = current_cluster {
+            if offset_left < BYTES_PER_CLUSTER {
+                break;
+            }
+            offset_left = offset_left.wrapping_sub_zero(BYTES_PER_CLUSTER);
+            previous_cluster = cluster;
+            current_cluster = fat::get_next_cluster(self.fat_addr, cluster);
+        }
 
         while size_left > 0 {
-            let bytes_to_copy = size_left.min(BYTES_PER_CLUSTER);
+            let cluster_offset = offset_left.min(BYTES_PER_CLUSTER);
+            let bytes_to_copy = size_left.min(BYTES_PER_CLUSTER - cluster_offset);
 
             if let Some(cluster) = current_cluster {
-                let cluster_addr = fat::get_sector_from_cluster(self.fat_addr, cluster);
                 unsafe {
-                    core::ptr::copy(cluster_addr, buffer, bytes_to_copy);
+                    let cluster_addr =
+                        fat::get_sector_from_cluster(self.ds_addr, cluster).add(cluster_offset);
+
+                    core::ptr::copy_nonoverlapping(buffer, cluster_addr as *mut u8, bytes_to_copy);
                     buffer = buffer.add(bytes_to_copy);
                 }
+
+                offset_left = 0; // Reset offset for subsequent clusters
+                size_left = size_left.wrapping_sub(bytes_to_copy);
                 previous_cluster = cluster;
                 current_cluster = fat::get_next_cluster(self.fat_addr, cluster);
             } else {
                 // Search FAT for unallocated cluster
                 if let Some(next_cluster) = fat::find_free_cluster(self.fat_addr) {
-                    // Write for previous entry to point to new cluster
+                    // Write previous cluster entry to point to new cluster
                     fat::write_fat(self.fat_addr, previous_cluster, next_cluster);
 
-                    let cluster_addr = fat::get_sector_from_cluster(self.ds_addr, next_cluster);
                     unsafe {
-                        core::ptr::copy(cluster_addr, buffer, bytes_to_copy);
+                        let cluster_addr = fat::get_sector_from_cluster(self.ds_addr, next_cluster)
+                            .add(cluster_offset);
+
+                        core::ptr::copy_nonoverlapping(
+                            buffer,
+                            cluster_addr as *mut u8,
+                            bytes_to_copy,
+                        );
                         buffer = buffer.add(bytes_to_copy);
                     }
 
+                    previous_cluster = next_cluster;
                     current_cluster = Some(next_cluster);
+                    offset_left = 0; // Reset offset for subsequent clusters
+                    size_left = size_left.wrapping_sub(bytes_to_copy);
                 }
             }
-            size_left -= BYTES_PER_CLUSTER;
+            size_left = size_left.wrapping_sub_zero(bytes_to_copy);
         }
     }
 
-    pub fn read_file(&self, file: &File, buffer: *mut u8, length: usize) {
+    pub fn read_file(&self, file: &File, mut buffer: *mut u8, length: usize, offset: usize) {
         if file.f_type == FileType::Directory {
             return;
         }
 
         let mut current_cluster = Some(file.current_cluster);
-
         let mut size_left = length;
+        let mut offset_left = offset;
 
-        let mut current_buffer_addr = buffer;
+        // Skip clusters until we reach the starting cluster of the given offset
+        while let Some(cluster) = current_cluster {
+            if offset_left < BYTES_PER_CLUSTER {
+                break;
+            }
+
+            offset_left -= BYTES_PER_CLUSTER;
+            current_cluster = fat::get_next_cluster(self.fat_addr, cluster);
+        }
 
         while let Some(cluster) = current_cluster {
             let cluster_addr = fat::get_sector_from_cluster(self.ds_addr, cluster);
-            let bytes_to_copy = size_left.min(BYTES_PER_CLUSTER);
-
-            print_serial!("Reading {} bytes from cluster {}\n", bytes_to_copy, cluster);
+            let cluster_offset = BYTES_PER_CLUSTER.min(offset_left);
+            let bytes_to_copy = size_left.min(BYTES_PER_CLUSTER - cluster_offset);
 
             unsafe {
-                core::ptr::copy(cluster_addr, current_buffer_addr, bytes_to_copy);
-                current_buffer_addr = current_buffer_addr.offset(bytes_to_copy as isize);
+                // Copy data from the current cluster starting at the specified offset
+                core::ptr::copy_nonoverlapping(
+                    cluster_addr.add(cluster_offset),
+                    buffer,
+                    bytes_to_copy,
+                );
+
+                buffer = buffer.add(bytes_to_copy);
             }
 
-            size_left = size_left.wrapping_sub_zero(bytes_to_copy);
+            size_left = size_left.wrapping_sub(bytes_to_copy);
+            offset_left = 0; // Reset offset for subsequent clusters
+
             current_cluster = fat::get_next_cluster(self.fat_addr, cluster);
         }
     }
@@ -329,10 +371,12 @@ impl Vfs {
     }
 
     fn find(&self, filename: &str, current_node: &TreeNode<File>) -> Option<TreeNode<File>> {
-        print_serial!("Files are:\n");
+        print_serial!("Finding stuff\n");
 
         for child in current_node.children.iter() {
             let file = unsafe { &*child.payload };
+
+            print_serial!("{:?}\n", file);
 
             if file.name == filename {
                 return Some(child.clone());

@@ -8,7 +8,6 @@ Remember:
 ```
 
 Now: 
-- Rewrite read to allow for offset
 - Port doom
 
 Refactoring:
@@ -17,7 +16,6 @@ Refactoring:
 - Add back nicer window design
 
 New:
-- Fix FAT bugs
 - Change design to include top bar and general colour scheme
 - IPC with message queues and blocking processes
 - Events queue for eventual usermode stuff

@@ -48,7 +48,7 @@ enum WMState {
 
 impl<'a> WindowManager<'a> {
     pub const fn new() -> WindowManager<'a> {
-        let rect = Rect::new(0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
+        let area = Rect::new(30, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
 
         WindowManager {
             windows: Stack::<Window>::new(),
@@ -60,7 +60,7 @@ impl<'a> WindowManager<'a> {
             mouse_coords: (512, 384),
             drag_offset: (0, 0),
             font: None,
-            area: rect,
+            area,
             current_state: WMState::Idle,
             marker: core::marker::PhantomData,
         }
@@ -72,10 +72,7 @@ impl<'a> WindowManager<'a> {
 
     pub fn set_font(&mut self) {
         let (font_start, font_ptr) = psf::get_font_data();
-        self.font = Some(Font {
-            metadata: unsafe { &*(font_ptr) },
-            start_addr: font_start,
-        });
+        self.font = Some(Font::new(font_ptr, font_start));
     }
 
     pub fn add_window(&mut self, mut window: Window) -> i16 {
@@ -90,7 +87,7 @@ impl<'a> WindowManager<'a> {
         let new_x = new_mouse_coords.0 as u16;
         let new_y = new_mouse_coords.1 as u16;
 
-        if !(new_x < SCREEN_WIDTH && new_x > 0 && new_y < SCREEN_HEIGHT && new_y > 0) {
+        if !(new_x < SCREEN_WIDTH && new_x > 0 && new_y < SCREEN_HEIGHT && new_y > 30) {
             return;
         }
 
@@ -113,8 +110,9 @@ impl<'a> WindowManager<'a> {
             }
             WMState::Drag => {
                 if is_left_click {
-                    self.move_window();
-                    self.paint_on_drag();
+                    if (self.move_window() > -1) {
+                        self.paint_on_drag();
+                    }
                 } else {
                     self.current_state = WMState::Idle;
                 }
@@ -124,10 +122,14 @@ impl<'a> WindowManager<'a> {
         self.paint_mouse(new_mouse_coords);
     }
 
-    fn move_window(&mut self) {
+    fn move_window(&mut self) -> isize {
         if let Some(current_window) = self.selected_window {
             let new_x = (self.mouse_coords.0).wrapping_sub_zero(self.drag_offset.0);
             let new_y = (self.mouse_coords.1).wrapping_sub_zero(self.drag_offset.1);
+
+            if new_y < 30 {
+                return -1;
+            }
 
             /*
                The affected area when dragging a window the area of:
@@ -142,7 +144,11 @@ impl<'a> WindowManager<'a> {
 
             window_ptr.x = new_x;
             window_ptr.y = new_y;
+
+            return 0;
         }
+
+        return -1;
     }
 
     fn paint_mouse(&mut self, new_mouse_coords: (i16, i16)) {
@@ -155,13 +161,13 @@ impl<'a> WindowManager<'a> {
             if let Some(intersection_region) = window.generate_rect().intersection(&old_mouse_rect)
             {
                 has_repainted = true;
-                intersection_region.paint(window.colour, self.fb_addr);
+                // intersection_region.paint(window.colour, self.fb_addr);
+                window.paint_rect(&intersection_region, self.fb_addr, &self.font.unwrap());
                 break;
             }
         }
 
         // If the mouse is not over a window, repaint the background
-
         if !has_repainted {
             old_mouse_rect.paint(BACKGROUND_COLOUR, self.fb_addr);
         }
@@ -186,7 +192,8 @@ impl<'a> WindowManager<'a> {
                     .generate_rect()
                     .intersection(&window.generate_rect())
                 {
-                    intersection_region.paint(raised_window.colour, self.fb_addr);
+                    // intersection_region.paint(raised_window.colour, self.fb_addr);
+                    window.paint_rect(&intersection_region, self.fb_addr, &self.font.unwrap());
                 }
             }
         }
@@ -206,27 +213,32 @@ impl<'a> WindowManager<'a> {
                 let window = w_window.payload;
 
                 if (index == 0) {
-                    window.generate_rect().paint(window.colour, self.fb_addr);
+                    // window.generate_rect().paint(window.colour, self.fb_addr);
+                    window.paint_rect(&window.generate_rect(), self.fb_addr, &self.font.unwrap());
                 } else {
                     let mut test_rects: Queue<Rect> = Queue::<Rect>::new();
 
                     test_rects.enqueue(drag_region);
                     Rect::split_rect_list(&mut raised_window.generate_rect(), &mut test_rects);
 
-                    for rect in test_rects.list.into_iter() {
-                        // print_serial!("{:?}\n", rect);
-                        rect.payload.paint_against_region(
-                            &window.generate_rect(),
-                            window.colour,
-                            self.fb_addr,
-                        );
-                    }
+                    // for rect in test_rects.list.into_iter() {
+                    //     // print_serial!("{:?}\n", rect);
+                    //     rect.payload.paint_against_region(
+                    //         &window.generate_rect(),
+                    //         window.colour,
+                    //         self.fb_addr,
+                    //     );
+                    // }
+
+                    window.paint(&test_rects, self.fb_addr, &self.font.unwrap());
 
                     test_rects.empty();
                 }
             }
 
-            drag_region.top = drag_region.top.wrapping_sub_zero(50);
+            // Repaint background
+
+            drag_region.top = drag_region.top.wrapping_sub_zero(50).max(30);
             drag_region.bottom += 50;
             drag_region.left = drag_region.left.wrapping_sub_zero(50);
             drag_region.right += 50;
@@ -300,11 +312,6 @@ impl<'a> WindowManager<'a> {
     }
 
     fn generate_drag_total_area(&self, window: &Window, new_x: u16, new_y: u16) -> Rect {
-        // let top = new_y.min(window.y) - 50;
-        // let bottom = (new_y + window.height).max(window.y + window.height) + 50;
-        // let left = new_x.min(window.x) - 50;
-        // let right = (new_x + window.width).max(window.x + window.width) + 50;
-
         let top = new_y.min(window.y);
         let bottom = (new_y + window.height).max(window.y + window.height);
         let left = new_x.min(window.x);
@@ -338,9 +345,11 @@ impl<'a> WindowManager<'a> {
                 Rect::split_rect_list(&mut clipping_rect, &mut self.dr_windows);
             }
 
-            for rect in self.dr_windows.list.into_iter() {
-                rect.payload.paint(window.colour, self.fb_addr);
-            }
+            window.paint(&self.dr_windows, self.fb_addr, &self.font.unwrap());
+
+            // for rect in self.dr_windows.list.into_iter() {
+            // rect.payload.paint(window.colour, self.fb_addr);
+            // }
 
             self.dr_windows.empty();
         }

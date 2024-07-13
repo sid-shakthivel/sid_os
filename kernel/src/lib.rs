@@ -62,10 +62,10 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
     interrupts::pic::PICS.lock().init();
     interrupts::pic::PICS.free();
 
-    // grub::bga_set_video_mode();
-    // gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
+    grub::bga_set_video_mode();
+    gfx::init(multiboot_info.get_framebuffer_tag().expect("Expected FB"));
 
-    grub::initalise_userland(multiboot_info);
+    // grub::initalise_userland(multiboot_info);
 
     // let current_datetime = utils::rtc::get_current_datetime();
     // current_datetime.print();

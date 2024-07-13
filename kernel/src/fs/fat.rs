@@ -5,6 +5,7 @@ use crate::fs::fat;
 use crate::utils::string;
 use crate::{memory::allocator::kmalloc, print_serial};
 
+const SECTORS_PER_CLUSTER: usize = 4;
 const BYTES_PER_SECTOR: usize = 512;
 pub const BYTES_PER_CLUSTER: usize = 2048;
 const BYTES_PER_FAT: usize = 10240;
@@ -100,7 +101,7 @@ impl BiosParameterBlock {
         );
 
         assert!(
-            self.sectors_per_cluster == 4,
+            self.sectors_per_cluster == SECTORS_PER_CLUSTER as u8,
             "Error: Sectors per cluster is not 4"
         );
 
@@ -175,13 +176,13 @@ fn read_fat(fat_addr: usize, fat_offset: usize) -> u16 {
 }
 
 pub fn get_sector_from_cluster(sector_addr: usize, cluster_num: usize) -> *mut u8 {
-    (((cluster_num - 2) * 4) + sector_addr) as *mut u8
+    (((cluster_num - 2) * SECTORS_PER_CLUSTER) + sector_addr) as *mut u8
 }
 
 pub fn init(start_addr: usize) -> (usize, usize, usize) {
     let bpb = unsafe { &*(start_addr as *const BiosParameterBlock) };
 
-    print_serial!("{:?}\n", bpb);
+    // print_serial!("{:?}\n", bpb);
 
     let ebr = unsafe {
         &*((start_addr as *mut u8).offset(size_of::<BiosParameterBlock>() as isize)

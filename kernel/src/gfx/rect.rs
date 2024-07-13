@@ -55,7 +55,59 @@ impl Rect {
         }
     }
 
-    pub fn paint_against_region(&self, region: &Rect, colour: u32, fb_address: usize) {
+    pub fn paint_text(
+        &self,
+        text: &'static str,
+        mut base_x: u16,
+        base_y: u16,
+        font: &Font,
+        fb_addr: usize,
+        colour: u32,
+    ) {
+        for byte in text.as_bytes() {
+            self.draw_clipped_character(*byte as char, base_x, base_y, font, fb_addr, colour);
+            base_x += 8;
+        }
+    }
+
+    fn draw_clipped_character(
+        &self,
+        character: char,
+        x: u16,
+        y: u16,
+        font: &Font,
+        fb_addr: usize,
+        colour: u32,
+    ) {
+        let glyph_address = (font.start_addr
+            + font.metadata.header_size
+            + (font.metadata.bytes_per_glyph * (character as u32)))
+            as *mut u8;
+
+        for cy in 0..16 {
+            let mut index = 8;
+            for cx in 0..8 {
+                let adjusted_x = x + cx;
+                let adjusted_y = y + cy;
+
+                // Load correct bitmap for glyph
+                let glyph_offset: u16 =
+                    unsafe { (*glyph_address.offset(cy as isize) as u16) & (1 << index) };
+                if glyph_offset > 0 {
+                    let fb_offset = ((fb_addr as u32)
+                        + (adjusted_y as u32 * 4096)
+                        + ((adjusted_x as u32 * 32) / 8))
+                        as *mut u32;
+                    unsafe {
+                        *fb_offset = colour;
+                    }
+                }
+                index -= 1;
+            }
+        }
+    }
+
+    pub fn paint_against_region(&self, region: &Rect, colour: u32, fb_addr: usize) {
         // Clamp writeable area to both the clipped region and the contrained area in which it should be
         let x_base = core::cmp::max(region.left, self.left);
         let y_base = core::cmp::max(region.top, self.top);
@@ -64,14 +116,14 @@ impl Rect {
 
         let clamped_rect = Rect::new(y_base, y_limit, x_limit, x_base);
 
-        clamped_rect.paint(colour, fb_address);
+        clamped_rect.paint(colour, fb_addr);
     }
 
-    pub fn paint(&self, colour: u32, fb_address: usize) {
+    pub fn paint(&self, colour: u32, fb_addr: usize) {
         for y in self.top..self.bottom {
             for x in self.left..self.right {
                 let offset =
-                    ((fb_address as u32) + (y as u32 * PITCH) + ((x as u32 * BPP) / 8)) as *mut u32;
+                    ((fb_addr as u32) + (y as u32 * PITCH) + ((x as u32 * BPP) / 8)) as *mut u32;
                 unsafe {
                     *offset = colour;
                 }

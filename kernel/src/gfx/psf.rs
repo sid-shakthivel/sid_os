@@ -23,6 +23,17 @@ pub struct Font {
     pub start_addr: u32,
 }
 
+impl Font {
+    pub fn new(metadata_ptr: *const PsfFont, start_addr: u32) -> Font {
+        let metadata = unsafe { &*(metadata_ptr) };
+
+        Font {
+            metadata,
+            start_addr,
+        }
+    }
+}
+
 impl PsfFont {
     pub fn verify(&self) {
         assert!(

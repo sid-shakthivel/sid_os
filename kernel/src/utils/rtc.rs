@@ -42,6 +42,40 @@ impl DateTime {
         );
     }
 
+    pub fn format_date(&self) -> [u8; 10] {
+        let mut buffer = [0u8; 10];
+
+        buffer[0] = b'0' + (self.day / 10);
+        buffer[1] = b'0' + (self.day % 10);
+        buffer[2] = b'/';
+
+        buffer[3] = b'0' + (self.month / 10);
+        buffer[4] = b'0' + (self.month % 10);
+        buffer[5] = b'/';
+
+        buffer[6] = b'0' + ((self.year / 1000) as u8 % 10);
+        buffer[7] = b'0' + ((self.year / 100) as u8 % 10);
+        buffer[8] = b'0' + ((self.year / 10) as u8 % 10);
+        buffer[9] = b'0' + ((self.year % 10) as u8);
+
+        buffer
+    }
+
+    pub fn format_time(&self) -> [u8; 8] {
+        let mut buffer = [0u8; 8];
+
+        buffer[0] = b'0' + (self.hour / 10);
+        buffer[1] = b'0' + (self.hour % 10);
+        buffer[2] = b':';
+        buffer[3] = b'0' + (self.minute / 10);
+        buffer[4] = b'0' + (self.minute % 10);
+        buffer[5] = b':';
+        buffer[6] = b'0' + (self.second / 10);
+        buffer[7] = b'0' + (self.second % 10);
+
+        buffer
+    }
+
     pub fn copy_from(&mut self, other: &DateTime) {
         self.second = other.second;
         self.minute = other.minute;

@@ -33,14 +33,14 @@ impl MultibootBootInfo {
             .max()
             .unwrap_or(0) as usize;
 
-        print_serial!("kernel end addr {:#X}\n", kernel_end_addr);
-        print_serial!("multiboot end addr {:#X}\n", multiboot_end_addr);
-        print_serial!("module end addr {:#X}\n", end_module_addr);
+        // print_serial!("kernel end addr {:#X}\n", kernel_end_addr);
+        // print_serial!("multiboot end addr {:#X}\n", multiboot_end_addr);
+        // print_serial!("module end addr {:#X}\n", end_module_addr);
 
-        // assert!(
-        //     end_module_addr > kernel_end_addr,
-        //     "Kernel end addr > End module addr\n"
-        // );
+        assert!(
+            end_module_addr > kernel_end_addr,
+            "Kernel end addr > End module addr\n"
+        );
 
         // assert!(
         //     end_module_addr > multiboot_end_addr,

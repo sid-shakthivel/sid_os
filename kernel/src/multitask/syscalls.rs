@@ -88,14 +88,15 @@ fn read(file: usize, buffer: *mut u8, length: usize) -> i64 {
     match file {
         Some(file) => {
             let file_ref = unsafe { &(*file) };
-            VFS.lock().read_file(file_ref, buffer, length);
+            VFS.lock()
+                .read_file(file_ref, buffer, length, file_ref.get_offset());
             VFS.free();
 
             return either!(length == file_ref.size => 0; length as i64);
         }
         None => panic!("Error: File not found"),
     }
-    
+
     0
 }
 
@@ -131,7 +132,8 @@ fn write(file: usize, buffer: *mut u8, length: usize) -> i64 {
                 // Need references rather then files need to fix
                 Some(mut file) => {
                     let file_mut_ref = unsafe { &mut (*file) };
-                    VFS.lock().write_file(file_mut_ref, buffer, length);
+                    VFS.lock()
+                        .write_file(file_mut_ref, buffer, length, file_mut_ref.get_offset());
                     VFS.free();
 
                     return either!(length == file_mut_ref.size => 0; length as i64);

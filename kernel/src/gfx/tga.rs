@@ -23,9 +23,9 @@ pub struct TgaHeader {
     pixeltype: u8, // must be 40
 }
 
-pub fn display_image(ptr: *const u8, size: usize) {
-    let ptr_ref = unsafe { &*ptr };
-    let header = unsafe { &*(ptr as *const TgaHeader) };
+pub fn display_image(tga_ptr: *const u8, size: usize) {
+    let ptr_ref = unsafe { &*tga_ptr };
+    let header = unsafe { &*(tga_ptr as *const TgaHeader) };
 
     let w = header.w as usize;
     let h = header.h as usize;
@@ -44,15 +44,15 @@ pub fn display_image(ptr: *const u8, size: usize) {
     let data = kmalloc(size) as *mut u32;
 
     unsafe {
-        if *ptr.offset(5) != 0
-            || *ptr.offset(6) != 0
-            || *ptr.offset(1) != 0
-            || (*ptr.offset(16) != 24 && *ptr.offset(16) != 32)
+        if *tga_ptr.offset(5) != 0
+            || *tga_ptr.offset(6) != 0
+            || *tga_ptr.offset(1) != 0
+            || (*tga_ptr.offset(16) != 24 && *tga_ptr.offset(16) != 32)
         {
             panic!("Error: Only supports 24 or 32 bit images\n");
         }
 
-        let the_value: usize = *ptr.offset(16) as usize >> 3;
+        let the_value: usize = *tga_ptr.offset(16) as usize >> 3;
 
         let mut y = 0;
         let mut i = 0;
@@ -60,9 +60,9 @@ pub fn display_image(ptr: *const u8, size: usize) {
             let mut j = ((!o != 0) as usize * (h - y - 1) + (o == 0) as usize * y) * w * the_value;
             for x in 0..w {
                 let color = 0xFF << 24
-                    | (*ptr.offset(j as isize + 2) as u32) << 16
-                    | (*ptr.offset(j as isize + 1) as u32) << 8
-                    | (*ptr.offset(j as isize) as u32);
+                    | (*tga_ptr.offset(j as isize + 2) as u32) << 16
+                    | (*tga_ptr.offset(j as isize + 1) as u32) << 8
+                    | (*tga_ptr.offset(j as isize) as u32);
 
                 *data.offset(2 + i) = color;
                 i += 1;
