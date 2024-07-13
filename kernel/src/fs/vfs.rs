@@ -1,6 +1,9 @@
 use core::intrinsics::size_of;
+use core::panic;
 
 use crate::fs::fat::{self, BYTES_PER_CLUSTER};
+use crate::memory::allocator::kmalloc;
+use crate::utils::wrapping_zero::WrappingSubZero;
 use crate::utils::{self, string};
 use crate::{ds::tree::TreeNode, utils::spinlock::Lock};
 use crate::{either, print_serial};
@@ -39,6 +42,14 @@ impl File {
             current_cluster,
             f_type,
         }
+    }
+
+    pub fn get_offset(&self) -> usize {
+        self.offset
+    }
+
+    pub fn set_offset(&mut self, offset: usize) {
+        self.offset = offset
     }
 }
 
@@ -134,7 +145,9 @@ impl Vfs {
                         }
                     };
 
-                    file.name = combined_str;
+                    file.name = combined_str.clone();
+
+                    print_serial!("Found file {}\n", file.name);
 
                     current_node.add_child(TreeNode::new(file));
                 }
@@ -232,7 +245,7 @@ impl Vfs {
                     // Write for previous entry to point to new cluster
                     fat::write_fat(self.fat_addr, previous_cluster, next_cluster);
 
-                    let cluster_addr = fat::get_sector_from_cluster(self.fat_addr, next_cluster);
+                    let cluster_addr = fat::get_sector_from_cluster(self.ds_addr, next_cluster);
                     unsafe {
                         core::ptr::copy(cluster_addr, buffer, bytes_to_copy);
                         buffer = buffer.add(bytes_to_copy);
@@ -254,16 +267,42 @@ impl Vfs {
 
         let mut size_left = length;
 
+        let mut current_buffer_addr = buffer;
+
         while let Some(cluster) = current_cluster {
-            let cluster_addr = fat::get_sector_from_cluster(self.fat_addr, cluster);
-            let bytes_to_copy = size_left.max(BYTES_PER_CLUSTER);
+            let cluster_addr = fat::get_sector_from_cluster(self.ds_addr, cluster);
+            let bytes_to_copy = size_left.min(BYTES_PER_CLUSTER);
+
+            print_serial!("Reading {} bytes from cluster {}\n", bytes_to_copy, cluster);
+
             unsafe {
-                core::ptr::copy(cluster_addr, buffer, bytes_to_copy);
+                core::ptr::copy(cluster_addr, current_buffer_addr, bytes_to_copy);
+                current_buffer_addr = current_buffer_addr.offset(bytes_to_copy as isize);
             }
 
-            size_left -= bytes_to_copy;
+            size_left = size_left.wrapping_sub_zero(bytes_to_copy);
             current_cluster = fat::get_next_cluster(self.fat_addr, cluster);
         }
+    }
+
+    pub fn open_addr(&self, filepath: &str) -> *mut File {
+        let is_absolute = filepath.starts_with("/");
+
+        assert!(is_absolute, "Error: Filename must be absolute");
+
+        let cleaned_filepath: &str = &filepath[1..filepath.len()];
+        let mut filepath_components = cleaned_filepath.split("/");
+
+        let mut current_node = self.root.clone();
+        for component in filepath_components {
+            if let Some(node) = self.find(component, &current_node) {
+                current_node = node;
+            } else {
+                panic!("Error: File not found");
+            }
+        }
+
+        current_node.payload
     }
 
     pub fn open(&self, filepath: &str) -> File {
@@ -283,13 +322,18 @@ impl Vfs {
             }
         }
 
+        let file_addr = current_node.payload;
+
         let file = unsafe { &*current_node.payload };
         return file.clone();
     }
 
     fn find(&self, filename: &str, current_node: &TreeNode<File>) -> Option<TreeNode<File>> {
+        print_serial!("Files are:\n");
+
         for child in current_node.children.iter() {
             let file = unsafe { &*child.payload };
+
             if file.name == filename {
                 return Some(child.clone());
             }

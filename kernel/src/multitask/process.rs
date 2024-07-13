@@ -15,13 +15,13 @@ pub static USER_PROCESS_START_ADDRESS: usize = 0x8000000;
     Processes will be selected based on  priority
     Procesess are mapped into a specific address space
 */
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub struct Process {
     pub pid: usize,
     pub rsp: *const usize,
     pub priority: ProcessPriority,
     pub p4: usize,
-    pub fdt: HashMap<File>,
+    pub fdt: HashMap<*mut File>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -44,7 +44,7 @@ impl ProcessPriority {
 impl Process {
     pub fn init(is_user: bool, pid: usize, start_addr: usize) -> Process {
         // Allocate a page of memory for the stack
-        // let mut rsp: *mut usize = kmalloc(paging::PAGE_SIZE);
+        // Use PFA for safety
         let mut rsp = PAGE_FRAME_ALLOCATOR.lock().alloc_page_frame().unwrap();
         PAGE_FRAME_ALLOCATOR.free();
 
@@ -86,7 +86,7 @@ impl Process {
             rsp = rsp.offset(-21);
         }
 
-        let fdt = HashMap::<File>::new();
+        let fdt = HashMap::<*mut File>::new();
 
         Process {
             pid,

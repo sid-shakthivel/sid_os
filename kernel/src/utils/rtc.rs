@@ -109,10 +109,11 @@ fn get_rtc_register(reg: u8) -> u8 {
 }
 
 pub fn get_current_datetime() -> DateTime {
+    read_rtc();
     return unsafe { DATETIME };
 }
 
-pub fn read_rtc() {
+fn read_rtc() {
     unsafe {
         let mut register_b: u8 = 0;
 

@@ -52,29 +52,20 @@ pub fn syscall_handler(registers: &SyscallStackFrame) -> i64 {
     let syscall_id = registers.rax;
 
     // print_serial!("syscall id: {}\n", syscall_id);
-    print_serial!("id: {} registers: {:?}\n", syscall_id, registers);
+    // print_serial!("id: {} registers: {:?}\n", syscall_id, registers);
 
-    // WARNING: lseek should be 8
+    // This set of syscalls are for the current implementation of newlib
     return match syscall_id {
-        0 => read(registers.rdi, registers.rsi as *mut u8, registers.rdx),
-        1 => write(registers.rdi, registers.rsi as *mut u8, registers.rdx),
-        2 => open(registers.rdi as *mut u8, registers.rsi),
-        3 => close(registers.rdi),
-        8 => lseek(registers.rdi, registers.rsi as isize, registers.rdx),
-        9 => mmap(
-            registers.rdi,
-            registers.rsi,
-            registers.rdx,
-            registers.r10,
-            registers.r8 as i32,
-            registers.r9,
-        ),
-        12 => brk(registers.rdi),
-        16 => ioctl(registers.rdi, registers.rsi),
-        20 => writev(registers.rdi, registers.rsi as *const Iovec, registers.rdx),
+        0 => read(registers.rbx, registers.rcx as *mut u8, registers.rdx),
+        1 => write(registers.rbx, registers.rcx as *mut u8, registers.rdx),
+        2 => open(registers.rbx as *mut u8, registers.rcx),
+        3 => close(registers.rbx),
+        8 => allocate_pages(registers.rbx),
+        9 => lseek(registers.rbx, registers.rcx as isize, registers.rdx),
+        19 => free_pages(registers.rbx, registers.rcx),
         56 => exit(),
         350 => getpid(),
-        351 => isatty(registers.rdi),
+        351 => isatty(registers.rbx),
         _ => {
             panic!("Unknown syscall? {}\n", syscall_id);
             return 0;
@@ -87,9 +78,7 @@ fn read(file: usize, buffer: *mut u8, length: usize) -> i64 {
         return -1;
     }
 
-    if (file == 0) {
-        panic!("Error: No implementation for stdin");
-    }
+    assert!(file == 0, "Error: No implementation for stdin");
 
     let current_proc = PROCESS_MANAGER.lock().get_current_process();
     PROCESS_MANAGER.free();
@@ -98,14 +87,15 @@ fn read(file: usize, buffer: *mut u8, length: usize) -> i64 {
 
     match file {
         Some(file) => {
-            // May not work
-            VFS.lock().read_file(&file, buffer, length);
+            let file_ref = unsafe { &(*file) };
+            VFS.lock().read_file(file_ref, buffer, length);
             VFS.free();
 
-            return either!(length == file.size => 0; length as i64);
+            return either!(length == file_ref.size => 0; length as i64);
         }
         None => panic!("Error: File not found"),
     }
+    
     0
 }
 
@@ -140,10 +130,11 @@ fn write(file: usize, buffer: *mut u8, length: usize) -> i64 {
             match file {
                 // Need references rather then files need to fix
                 Some(mut file) => {
-                    VFS.lock().write_file(&mut file, buffer, length);
+                    let file_mut_ref = unsafe { &mut (*file) };
+                    VFS.lock().write_file(file_mut_ref, buffer, length);
                     VFS.free();
 
-                    return either!(length == file.size => 0; length as i64);
+                    return either!(length == file_mut_ref.size => 0; length as i64);
                 }
                 None => panic!("Error: File not found"),
             }
@@ -160,7 +151,7 @@ fn open(file: *const u8, flags: usize) -> i64 {
         panic!("Not implemented")
     }
 
-    let file = VFS.lock().open(filepath);
+    let file = VFS.lock().open_addr(filepath);
     VFS.free();
 
     let current_proc = PROCESS_MANAGER.lock().get_current_process();
@@ -181,8 +172,39 @@ fn close(file: usize) -> i64 {
     0
 }
 
-fn lseek(file: usize, offset: isize, whence: usize) -> i64 {
-    0
+fn lseek(fd: usize, new_offset: isize, whence: usize) -> i64 {
+    assert!(
+        fd == 0 || fd == 1 || fd == 2,
+        "Error: Invalid file for lseek"
+    );
+
+    assert!(new_offset > 0, "Error: Offset must be above 0");
+
+    let current_proc = PROCESS_MANAGER.lock().get_current_process();
+    PROCESS_MANAGER.free();
+
+    let file = current_proc.fdt.get(fd);
+
+    match file {
+        // Need references rather then files need to fix
+        Some(mut file) => {
+            let file_mut_ref = unsafe { &mut (*file) };
+
+            let new_offset = match whence {
+                0 => new_offset,
+                1 => file_mut_ref.get_offset() as isize + new_offset,
+                2 => file_mut_ref.size as isize + new_offset,
+                _ => panic!("Error: Invalid whence"),
+            };
+
+            file_mut_ref.set_offset(new_offset as usize);
+
+            return file_mut_ref.get_offset() as i64;
+        }
+        None => panic!("Error: File not found"),
+    }
+
+    new_offset as i64
 }
 
 fn mmap(addr: usize, length: usize, prot: usize, flags: usize, fd: i32, offset: usize) -> i64 {
@@ -279,3 +301,32 @@ fn free_pages(memory_address: usize, pages_required: usize) -> i64 {
     PAGE_FRAME_ALLOCATOR.free();
     0
 }
+
+/*
+Underneath is the current implementation of syscalls for musl which unfortunately does not work
+return match syscall_id {
+    0 => read(registers.rdi, registers.rsi as *mut u8, registers.rdx),
+    1 => write(registers.rdi, registers.rsi as *mut u8, registers.rdx),
+    2 => open(registers.rdi as *mut u8, registers.rsi),
+    3 => close(registers.rdi),
+    8 => lseek(registers.rdi, registers.rsi as isize, registers.rdx),
+    9 => mmap(
+        registers.rdi,
+        registers.rsi,
+        registers.rdx,
+        registers.r10,
+        registers.r8 as i32,
+        registers.r9,
+    ),
+    12 => brk(registers.rdi),
+    16 => ioctl(registers.rdi, registers.rsi),
+    20 => writev(registers.rdi, registers.rsi as *const Iovec, registers.rdx),
+    56 => exit(),
+    350 => getpid(),
+    351 => isatty(registers.rdi),
+    _ => {
+        panic!("Unknown syscall? {}\n", syscall_id);
+        return 0;
+    }
+};
+*/

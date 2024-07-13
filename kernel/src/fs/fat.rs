@@ -175,13 +175,13 @@ fn read_fat(fat_addr: usize, fat_offset: usize) -> u16 {
 }
 
 pub fn get_sector_from_cluster(sector_addr: usize, cluster_num: usize) -> *mut u8 {
-    (((cluster_num - 2) * BYTES_PER_SECTOR) + sector_addr) as *mut u8
+    (((cluster_num - 2) * 4) + sector_addr) as *mut u8
 }
 
 pub fn init(start_addr: usize) -> (usize, usize, usize) {
     let bpb = unsafe { &*(start_addr as *const BiosParameterBlock) };
 
-    // print_serial!("{:?}\n", bpb);
+    print_serial!("{:?}\n", bpb);
 
     let ebr = unsafe {
         &*((start_addr as *mut u8).offset(size_of::<BiosParameterBlock>() as isize)

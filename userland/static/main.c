@@ -2,13 +2,12 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "test.h"
 
 int main()
 {
     // asm volatile("xchg %bx, %bx");
 
-    puts("In main");
+    puts("ok ok ok newlib");
 
     // do_something();
 

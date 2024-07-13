@@ -8,8 +8,8 @@ Remember:
 ```
 
 Now: 
-- lseek
-- Change the hashmap to *mut T and no pointer for the queue
+- Rewrite read to allow for offset
+- Port doom
 
 Refactoring:
 - When deleting Set all FAT entries in file's cluster chain to zero
@@ -17,8 +17,9 @@ Refactoring:
 - Add back nicer window design
 
 New:
-- Continue syscalls
-- IPC with message queues
+- Fix FAT bugs
+- Change design to include top bar and general colour scheme
+- IPC with message queues and blocking processes
 - Events queue for eventual usermode stuff
 
 Useful articles:

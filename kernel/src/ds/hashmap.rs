@@ -10,16 +10,17 @@
 use crate::{ds::queue, fs::vfs::File, memory::allocator::kmalloc, print_serial};
 
 use super::{list::ListNode, queue::Queue};
-use core::{fmt::Debug, hash};
+
+use core::mem::size_of;
 
 const CAPACITY: usize = 10;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub struct HashMap<T: 'static> {
     items: [Option<HashItem<T>>; CAPACITY],
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub struct HashItem<T: 'static> {
     key: usize,
     value: T,
