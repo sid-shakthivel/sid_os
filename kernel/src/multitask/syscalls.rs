@@ -7,10 +7,12 @@
 use core::panic;
 
 use crate::fs::vfs::{Vfs, VFS};
-use crate::gfx::window::Window;
+use crate::gfx::window::{self, SimpleWindow, Window};
+use crate::gfx::wm::WM;
 use crate::interrupts::{InterruptStackFrame, SyscallStackFrame};
 use crate::memory::allocator::kmalloc;
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
+use crate::utils::event::EVENT_MANAGER;
 use crate::utils::{bitwise, string};
 use crate::{either, print_serial};
 
@@ -69,6 +71,8 @@ pub fn syscall_handler(registers: &SyscallStackFrame) -> i64 {
         351 => isatty(registers.rbx),
         352 => send_message(registers.rbx as *mut Message),
         353 => receive_message(),
+        354 => create_window(registers.rbx as *mut SimpleWindow, registers.rcx != 0),
+        355 => get_event(),
         _ => {
             panic!("Unknown syscall? {}\n", syscall_id);
             return 0;
@@ -323,6 +327,32 @@ fn receive_message() -> i64 {
     }
 
     -1
+}
+
+fn create_window(new_window: *mut SimpleWindow, should_repaint: bool) -> i64 {
+    let window_properties = unsafe { &mut *new_window };
+
+    let mut new_window_name = string::get_string_from_ptr(window_properties.name);
+    new_window_name = &new_window_name[0..new_window_name.len() - 1];
+
+    let new_window = Window::from(&window_properties, &new_window_name);
+
+    WM.lock().add_window(new_window);
+    WM.free();
+
+    if should_repaint {
+        WM.lock().paint();
+        WM.free();
+    }
+
+    return 0;
+}
+
+fn get_event() -> i64 {
+    let event = EVENT_MANAGER.lock().get_event();
+    EVENT_MANAGER.free();
+
+    event as i64
 }
 
 /*

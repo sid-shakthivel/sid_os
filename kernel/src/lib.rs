@@ -16,6 +16,8 @@ mod multitask;
 mod output;
 mod utils;
 
+use utils::event::EVENT_MANAGER;
+
 use crate::dev::mouse;
 use crate::gfx::init;
 use crate::memory::allocator::{kfree, kmalloc, print_memory_list};
@@ -51,6 +53,9 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
 
     PROCESS_MANAGER.lock().init();
     PROCESS_MANAGER.free();
+
+    EVENT_MANAGER.lock().init();
+    EVENT_MANAGER.free();
 
     interrupts::pit::PIT.lock().init();
     interrupts::pit::PIT.free();

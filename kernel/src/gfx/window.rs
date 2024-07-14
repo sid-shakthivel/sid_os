@@ -18,6 +18,17 @@ pub struct Window {
     pub colour: u32,
 }
 
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct SimpleWindow {
+    x: u16,
+    y: u16,
+    width: u16,
+    height: u16,
+    colour: u32,
+    pub name: *const u8,
+}
+
 impl Window {
     pub const fn new(
         title: &'static str,
@@ -27,10 +38,6 @@ impl Window {
         height: u16,
         colour: u32,
     ) -> Window {
-        /*
-           Must constrain areas which are updated to certain regions
-           Windows consist of: title bar, main area, outline, text
-        */
         Window {
             title,
             wid: 0,
@@ -39,6 +46,18 @@ impl Window {
             width,
             height,
             colour,
+        }
+    }
+
+    pub fn from(simple_window: &SimpleWindow, name: &'static str) -> Window {
+        Window {
+            title: name,
+            wid: 0,
+            x: simple_window.x,
+            y: simple_window.y,
+            width: simple_window.width,
+            height: simple_window.height,
+            colour: simple_window.colour,
         }
     }
 
@@ -64,7 +83,6 @@ impl Window {
             self.x + ((self.width / 2) - (self.title.as_bytes().len() as u16 * 8) / 2);
         let text_start_y = self.y + (WINDOW_TITLE_HEIGHT - 16) / 2;
 
-
         for rect_node in dr.list.into_iter() {
             let current_rect = rect_node.payload;
 
@@ -74,13 +92,7 @@ impl Window {
             // Paint top title bar
             current_rect.paint_against_region(&title_bar, WINDOW_TITLE_COLOUR, fb_addr);
 
-            current_rect.paint_text(
-                self.title,
-                text_start_x,
-                text_start_y,
-                fb_addr,
-                0xffffff,
-            );
+            current_rect.paint_text(self.title, text_start_x, text_start_y, fb_addr, 0xffffff);
         }
     }
 
@@ -108,12 +120,6 @@ impl Window {
         // Paint top title bar
         dr.paint_against_region(&title_bar, WINDOW_TITLE_COLOUR, fb_addr);
 
-        dr.paint_text(
-            self.title,
-            text_start_x,
-            text_start_y,
-            fb_addr,
-            0xffffff,
-        );
+        dr.paint_text(self.title, text_start_x, text_start_y, fb_addr, 0xffffff);
     }
 }

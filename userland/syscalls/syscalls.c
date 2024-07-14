@@ -114,24 +114,35 @@ Message *receive_message()
 {
     Message *result;
     asm volatile(
-        "mov $352, %%rax \n\t"      // Move syscall number 352 to rax (assuming 352 is the syscall number for receive_message)
-        "int $0x80 \n\t"            // Trigger interrupt 0x80 (syscall)
-        "mov %%rax, %[result] \n\t" // Move the result from rax to result
-        : [result] "=r"(result)     // Output operand
-        :                           // No input operands
-        : "rax"                     // Clobbered registers
-    );
+        "mov $353, %%rax \n\t"
+        "int $0x80 \n\t"
+        "mov %%rax, %[result] \n\t"
+        : [result] "=r"(result)
+        :
+        : "rax");
     return result;
 }
 
-// void *liballoc_alloc(int pages)
-// {
-//     int64_t result;
-//     asm volatile("mov %1, %%ebx \n\t\
-//                  mov $352, %%rax \n\t\
-//                  int $0x80 \n\t\
-//                  "
-//                  : "=r"(result)
-//                  : "r"(pages));
-//     return (void *)result;
-// }
+int create_window(Window *new_window, bool should_repaint)
+{
+
+    int64_t result;
+    asm volatile("mov %2, %%ebx \n\t\
+    mov %1, %%ecx \n\t\
+    mov $254, %%eax \n\t\
+    int $0x80 \n\t\
+    "
+                 : "=r"(result)
+                 : "r"((int)should_repaint), "m"(new_window));
+    return (int)result;
+}
+
+Event *get_event()
+{
+    int64_t result;
+    asm volatile("mov $355, %%rax \n\t\
+                 int $0x80 \n\t\
+                 "
+                 : "=r"(result));
+    return (Event *)result;
+}

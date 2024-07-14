@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 
 // char **environ; /* pointer to array of char * strings that define the current environment variables */
 
@@ -20,6 +21,25 @@ typedef struct
     uint64_t m_type;
 } Message;
 
+typedef struct Window
+{
+    int x;
+    int y;
+    int width;
+    int height;
+    unsigned int colour;
+    char *name;
+} Window;
+
+typedef struct Event
+{
+    uint8_t flags;
+    uint8_t scancode;
+    uint8_t character;
+    uint16_t mouse_x;
+    uint16_t mouse_y;
+} Event;
+
 void _exit();
 int close(int file);
 int execve(char *name, char **argv, char **env);
@@ -37,8 +57,10 @@ int unlink(char *name);
 int wait(int *status);
 int lseek(int file, int ptr, int dir);
 int write(int file, char *ptr, int len);
-int gettimeofday(struct timeval *p, void *restrict);
+// int gettimeofday(struct timeval *p, void *restrict);
 int send_message(Message *message);
 Message *receive_message();
+int create_window(Window *new_window, bool should_repaint);
+Event *get_event();
 
-void *liballoc_alloc(int pages);
+// void *liballoc_alloc(int pages);

@@ -1,11 +1,12 @@
 pub mod bitwise;
+pub mod event;
 pub mod grub;
 pub mod multiboot2;
 pub mod ports;
+pub mod rtc;
 pub mod spinlock;
 pub mod string;
 pub mod wrapping_zero;
-pub mod rtc;
 
 #[macro_export]
 macro_rules! either {

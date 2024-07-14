@@ -15,10 +15,12 @@ Refactoring:
 - Rewrite the FileEntry::new() function
 - General FAT systems
 - Switch into_iter to iter (for list and remove need for ListNode to just payload)
+- Switch from using wrappers/listnodes to actual thing
+- Have specific mut methods for mutable things
+- Need a buffer for each window
 
 New:
-- Usermode stuff for window management
-- Events queue for eventual usermode stuff
+- Methods for writing string and to buffer
 
 Useful articles:
 https://fejlesztek.hu/create-a-fat-file-system-image-on-linux/
@@ -54,20 +56,6 @@ liballoc
 
 Where does font= come from? not in makefile
 
-int send_message(int cpid, int pid, char *ptr)
-{
-    int64_t result;
-    asm volatile("mov %1, %%ebx \n\t\
-        mov %2, %%ecx \n\t\
-        mov %3, %%edx \n\t\
-        mov $20, %%eax \n\t\
-        int $0x80 \n\t\
-        "
-                 : "=r"(result)
-                 : "r"(cpid), "r"(pid), "m"(ptr));
-    return (int)result;
-}
-
 ```
 char *ptr = "hello from c\n";
 int64_t result;
@@ -81,3 +69,15 @@ asm volatile("mov %3, %%ebx \n\t\
                 : "=r"(result)
                 : "r"(13), "m"(ptr), "r"(1));
 ```
+
+// void *liballoc_alloc(int pages)
+// {
+//     int64_t result;
+//     asm volatile("mov %1, %%ebx \n\t\
+//                  mov $352, %%rax \n\t\
+//                  int $0x80 \n\t\
+//                  "
+//                  : "=r"(result)
+//                  : "r"(pages));
+//     return (void *)result;
+// }

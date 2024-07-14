@@ -7,6 +7,7 @@
 
 use super::ps2;
 use crate::print_serial;
+use crate::utils::event::EVENT_MANAGER;
 use crate::utils::spinlock::Lock;
 
 pub struct Keyboard {
@@ -61,6 +62,9 @@ impl Keyboard {
             match scancode {
                 0x26 => {
                     print_serial!("l");
+
+                    EVENT_MANAGER.lock().update_key_event(scancode, 'l');
+                    EVENT_MANAGER.free();
                 }
                 0x2A => self.is_upper = true,  // Left shift pressed
                 0x36 => self.is_upper = true,  // Right shift pressed
@@ -69,6 +73,9 @@ impl Keyboard {
                 0x3A => self.is_upper = !self.is_upper, // Caps lock pressed
                 _ => {
                     let letter = self.translate(scancode, self.is_upper);
+
+                    EVENT_MANAGER.lock().update_key_event(scancode, letter);
+                    EVENT_MANAGER.free();
 
                     // Check for letter or enter key
                     if scancode == 0x1c || letter != '0' {
