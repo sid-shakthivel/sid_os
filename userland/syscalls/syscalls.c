@@ -97,6 +97,33 @@ int isatty(int file)
     return (int)result;
 }
 
+int send_message(Message *message)
+{
+    int64_t result;
+    asm volatile(
+        "mov %[msg_addr], %%rbx \n\t"
+        "mov $352, %%rax \n\t"
+        "int $0x80 \n\t"
+        : "=r"(result)
+        : [msg_addr] "r"(message)
+        : "rax", "rbx");
+    return (int)result;
+}
+
+Message *receive_message()
+{
+    Message *result;
+    asm volatile(
+        "mov $352, %%rax \n\t"      // Move syscall number 352 to rax (assuming 352 is the syscall number for receive_message)
+        "int $0x80 \n\t"            // Trigger interrupt 0x80 (syscall)
+        "mov %%rax, %[result] \n\t" // Move the result from rax to result
+        : [result] "=r"(result)     // Output operand
+        :                           // No input operands
+        : "rax"                     // Clobbered registers
+    );
+    return result;
+}
+
 // void *liballoc_alloc(int pages)
 // {
 //     int64_t result;

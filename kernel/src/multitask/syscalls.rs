@@ -14,6 +14,7 @@ use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
 use crate::utils::{bitwise, string};
 use crate::{either, print_serial};
 
+use super::process::Message;
 use super::PROCESS_MANAGER;
 
 pub static mut FILE_TABLE_COUNTER: usize = 0;
@@ -66,6 +67,8 @@ pub fn syscall_handler(registers: &SyscallStackFrame) -> i64 {
         56 => exit(),
         350 => getpid(),
         351 => isatty(registers.rbx),
+        352 => send_message(registers.rbx as *mut Message),
+        353 => receive_message(),
         _ => {
             panic!("Unknown syscall? {}\n", syscall_id);
             return 0;
@@ -302,6 +305,24 @@ fn free_pages(memory_address: usize, pages_required: usize) -> i64 {
         .free_page_frames(memory_address as *mut usize, pages_required);
     PAGE_FRAME_ALLOCATOR.free();
     0
+}
+
+fn send_message(message: *mut Message) -> i64 {
+    PROCESS_MANAGER.lock().send_message(message);
+    PROCESS_MANAGER.free();
+
+    1
+}
+
+fn receive_message() -> i64 {
+    let message = PROCESS_MANAGER.lock().receive_message();
+    PROCESS_MANAGER.free();
+
+    if let Some(message_addr) = message {
+        return message_addr as i64;
+    }
+
+    -1
 }
 
 /*

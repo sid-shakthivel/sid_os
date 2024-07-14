@@ -14,9 +14,9 @@ Refactoring:
 - When deleting Set all FAT entries in file's cluster chain to zero
 - Rewrite the FileEntry::new() function
 - General FAT systems
+- Switch into_iter to iter (for list and remove need for ListNode to just payload)
 
 New:
-- IPC with message queues and blocking processes
 - Usermode stuff for window management
 - Events queue for eventual usermode stuff
 
@@ -81,5 +81,3 @@ asm volatile("mov %3, %%ebx \n\t\
                 : "=r"(result)
                 : "r"(13), "m"(ptr), "r"(1));
 ```
-
-        

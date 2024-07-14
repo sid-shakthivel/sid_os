@@ -17,14 +17,14 @@ pub struct Message {
     pub message: *const u8,
     pub length: usize,
     pub m_type: usize,
-    pub should_block: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[allow(dead_code)]
-enum ProcessState {
+pub enum ProcessState {
     Running,
     Blocked,
+    Terminated,
 }
 
 /*

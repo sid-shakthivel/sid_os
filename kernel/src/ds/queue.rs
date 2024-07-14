@@ -10,9 +10,9 @@ use core::cmp::Ordering;
 
 // A wrapper to add priority to any type
 #[derive(Clone, Copy)]
-struct PriorityWrapper<T> {
+pub struct PriorityWrapper<T> {
     priority: usize,
-    value: T,
+    pub value: T,
 }
 
 impl<T> Ord for PriorityWrapper<T> {

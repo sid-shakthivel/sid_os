@@ -107,6 +107,19 @@ impl<T> DynamicArray<T> {
         }
     }
 
+    pub fn find_where<F>(&self, func: &F, key: usize) -> Option<usize>
+    where
+        F: Fn(&T, usize) -> bool,
+    {
+        for (i, node) in self.iter().enumerate() {
+            if func(node, key) {
+                return Some(i);
+            }
+        }
+
+        None
+    }
+
     pub fn iter(&self) -> DynamicArrayIter<'_, T> {
         DynamicArrayIter {
             data: self.data,
