@@ -162,30 +162,27 @@ impl<T: Clone> List<T> {
             _marker: core::marker::PhantomData,
         }
     }
-}
 
-impl<'a, T> IntoIterator for &'a List<T> {
-    type Item = &'a ListNode<T>;
-    type IntoIter = ListIterator<'a, T>;
-
-    fn into_iter(self) -> Self::IntoIter {
+    pub fn iter(&self) -> ListIterator<'_, T> {
         ListIterator {
-            current: self.head.map(|head| unsafe { &*head }),
+            current: self.head,
+            _marker: core::marker::PhantomData,
         }
     }
 }
 
 pub struct ListIterator<'a, T: 'static> {
-    current: Option<&'a ListNode<T>>,
+    current: Option<*mut ListNode<T>>,
+    _marker: core::marker::PhantomData<&'a T>,
 }
 
 impl<'a, T> Iterator for ListIterator<'a, T> {
-    type Item = &'a ListNode<T>;
+    type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.current.map(|node| {
-            self.current = node.next.map(|next| unsafe { &*next });
-            node
+            self.current = unsafe { (*node).next };
+            unsafe { &(*node).payload }
         })
     }
 }

@@ -74,8 +74,10 @@ impl Keyboard {
                 _ => {
                     let letter = self.translate(scancode, self.is_upper);
 
-                    EVENT_MANAGER.lock().update_key_event(scancode, letter);
-                    EVENT_MANAGER.free();
+                    if letter != '0' {
+                        EVENT_MANAGER.lock().update_key_event(scancode, letter);
+                        EVENT_MANAGER.free();
+                    }
 
                     // Check for letter or enter key
                     if scancode == 0x1c || letter != '0' {

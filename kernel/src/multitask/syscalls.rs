@@ -6,7 +6,7 @@
 
 use core::panic;
 
-use crate::fs::vfs::{Vfs, VFS};
+use crate::fs::vfs::{File, Vfs, VFS};
 use crate::gfx::window::{self, SimpleWindow, Window};
 use crate::gfx::wm::WM;
 use crate::gfx::FB_ADDR;
@@ -20,7 +20,7 @@ use crate::{either, print_serial};
 use super::process::Message;
 use super::PROCESS_MANAGER;
 
-pub static mut FILE_TABLE_COUNTER: usize = 0;
+pub static mut FILE_TABLE_COUNTER: usize = 5;
 
 #[repr(usize)]
 enum MemoryProtectionAttributes {
@@ -65,7 +65,7 @@ pub fn syscall_handler(registers: &SyscallStackFrame) -> i64 {
         2 => open(registers.rbx as *mut u8, registers.rcx),
         3 => close(registers.rbx),
         8 => allocate_pages(registers.rbx),
-        9 => lseek(registers.rbx, registers.rcx as isize, registers.rdx),
+        9 => lseek(registers.rdx, registers.rcx as isize, registers.rbx),
         19 => free_pages(registers.rbx, registers.rcx),
         56 => exit(),
         350 => getpid(),
@@ -93,7 +93,9 @@ fn read(file: usize, buffer: *mut u8, length: usize) -> i64 {
         return -1;
     }
 
-    assert!(file == 0, "Error: No implementation for stdin");
+    // assert!(file == 0, "Error: No implementation for stdin");
+
+    print_serial!("Reading {} {}\n", file, length);
 
     let current_proc = PROCESS_MANAGER.lock().get_current_process();
     PROCESS_MANAGER.free();
@@ -103,6 +105,7 @@ fn read(file: usize, buffer: *mut u8, length: usize) -> i64 {
     match file {
         Some(file) => {
             let file_ref = unsafe { &(*file) };
+
             VFS.lock()
                 .read_file(file_ref, buffer, length, file_ref.get_offset());
             VFS.free();
@@ -168,6 +171,8 @@ fn open(file: *const u8, flags: usize) -> i64 {
         panic!("Not implemented")
     }
 
+    print_serial!("open\n");
+
     let file = VFS.lock().open_addr(filepath);
     VFS.free();
 
@@ -175,8 +180,14 @@ fn open(file: *const u8, flags: usize) -> i64 {
     PROCESS_MANAGER.free();
 
     unsafe {
+        let file_mut_ref = unsafe { &mut (*file) };
+        print_serial!("file: {:?}\n", file_mut_ref);
+
         FILE_TABLE_COUNTER += 1;
         current_proc.fdt.set(FILE_TABLE_COUNTER, file);
+
+        // print_serial!("Opening with {}\n", FILE_TABLE_COUNTER);
+
         return FILE_TABLE_COUNTER as i64;
     }
 }
@@ -190,12 +201,19 @@ fn close(file: usize) -> i64 {
 }
 
 fn lseek(fd: usize, new_offset: isize, whence: usize) -> i64 {
-    assert!(
-        fd == 0 || fd == 1 || fd == 2,
-        "Error: Invalid file for lseek"
-    );
+    // assert!(
+    //     fd == 0 || fd == 1 || fd == 2,
+    //     "Error: Invalid file for lseek"
+    // );
 
-    assert!(new_offset > 0, "Error: Offset must be above 0");
+    assert!(new_offset >= 0, "Error: Offset must be above 0");
+
+    print_serial!(
+        "lseek fd = {} whence = {} offset = {}\n",
+        fd,
+        whence,
+        new_offset
+    );
 
     let current_proc = PROCESS_MANAGER.lock().get_current_process();
     PROCESS_MANAGER.free();
@@ -218,7 +236,9 @@ fn lseek(fd: usize, new_offset: isize, whence: usize) -> i64 {
 
             return file_mut_ref.get_offset() as i64;
         }
-        None => panic!("Error: File not found"),
+        None => {
+            panic!("Error: File not found")
+        }
     }
 
     new_offset as i64
@@ -302,7 +322,7 @@ fn getpid() -> i64 {
 }
 
 fn allocate_pages(pages_required: usize) -> i64 {
-    print_serial!("allocating {}\n", pages_required);
+    // print_serial!("allocating {}\n", pages_required);
 
     let address = PAGE_FRAME_ALLOCATOR
         .lock()
@@ -316,7 +336,8 @@ fn free_pages(memory_address: usize, pages_required: usize) -> i64 {
         .lock()
         .free_page_frames(memory_address as *mut usize, pages_required);
     PAGE_FRAME_ALLOCATOR.free();
-    0
+
+    1
 }
 
 fn send_message(message: *mut Message) -> i64 {
@@ -340,19 +361,17 @@ fn receive_message() -> i64 {
 fn create_window(new_window: *mut SimpleWindow) -> i64 {
     let window_properties = unsafe { &mut *new_window };
 
-    // let new_window_name = "terminal";
-
     let mut new_window_name = string::get_string_from_ptr(window_properties.name);
 
     let new_window = Window::from(&window_properties, &new_window_name);
 
-    WM.lock().add_window(new_window);
+    let wid = WM.lock().add_window(new_window);
     WM.free();
 
     WM.lock().paint();
     WM.free();
 
-    new_window.wid as i64
+    wid as i64
 }
 
 fn get_event() -> i64 {
@@ -363,17 +382,16 @@ fn get_event() -> i64 {
 }
 
 fn paint_string(ptr: *mut u8, wid: usize, x: usize, y: usize) -> i64 {
-    let string = string::get_string_from_ptr(ptr);
+    let mut string = string::get_string_from_ptr(ptr);
 
     let window = WM.lock().find_get_mut(wid);
     WM.free();
 
     let rect = window.generate_rect();
-    window.copy_string_to_buffer(string, x as u16, y as u16, 0x00);
+    window.copy_string_to_buffer(string, x as u16, y as u16, 0xffffff);
 
     unsafe {
-        let fb_addr = FB_ADDR;
-        rect.paint_text(string, x as u16, y as u16, fb_addr, 0x00);
+        window.paint_rect(&rect, FB_ADDR);
     }
 
     1

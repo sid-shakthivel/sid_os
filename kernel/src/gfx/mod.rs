@@ -58,14 +58,6 @@ pub fn init(fb_tag: &multiboot2::FramebufferTag) {
     FONT.lock().init(font_ptr, font_start);
     FONT.free();
 
-    WM.lock()
-        .add_window(Window::new("Terminal", 100, 100, 400, 300, 0x363636));
-    WM.free();
-
-    // WM.lock()
-    //     .add_window(Window::new("File Manager", 600, 400, 150, 300, 0xFFFFFF));
-    // WM.free();
-
     WM.lock().paint();
     WM.free();
 

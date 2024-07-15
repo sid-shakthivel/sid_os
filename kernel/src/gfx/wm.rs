@@ -1,5 +1,6 @@
 use core::panic;
 
+use super::bar::TOP_BAR_HEIGHT;
 use super::psf::{self, Font};
 use super::rect::{self, Rect};
 use super::window::Window;
@@ -46,13 +47,13 @@ enum WMState {
     Drag,
 }
 
-fn find_window(node: &ListNode<Window>, wid: usize) -> bool {
-    return node.payload.wid == wid;
+fn find_window(node: &Window, wid: usize) -> bool {
+    return node.wid == wid;
 }
 
 impl<'a> WindowManager<'a> {
     pub const fn new() -> WindowManager<'a> {
-        let area = Rect::new(30, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
+        let area = Rect::new(TOP_BAR_HEIGHT, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
 
         WindowManager {
             windows: Stack::<Window>::new(),
@@ -90,7 +91,7 @@ impl<'a> WindowManager<'a> {
         let new_x = new_mouse_coords.0 as u16;
         let new_y = new_mouse_coords.1 as u16;
 
-        if !(new_x < SCREEN_WIDTH && new_x > 0 && new_y < SCREEN_HEIGHT && new_y > 30) {
+        if !(new_x < SCREEN_WIDTH && new_x > 0 && new_y < SCREEN_HEIGHT && new_y > TOP_BAR_HEIGHT) {
             return;
         }
 
@@ -130,7 +131,7 @@ impl<'a> WindowManager<'a> {
             let new_x = (self.mouse_coords.0).wrapping_sub_zero(self.drag_offset.0);
             let new_y = (self.mouse_coords.1).wrapping_sub_zero(self.drag_offset.1);
 
-            if new_y < 30 {
+            if new_y < TOP_BAR_HEIGHT {
                 return -1;
             }
 
@@ -159,12 +160,10 @@ impl<'a> WindowManager<'a> {
 
         let mut has_repainted: bool = false;
 
-        for (index, w_window) in self.windows.list.into_iter().enumerate() {
-            let window = w_window.payload;
+        for (index, window) in self.windows.iter().enumerate() {
             if let Some(intersection_region) = window.generate_rect().intersection(&old_mouse_rect)
             {
                 has_repainted = true;
-                // intersection_region.paint(window.colour, self.fb_addr);
                 window.paint_rect(&intersection_region, self.fb_addr);
                 break;
             }
@@ -188,14 +187,12 @@ impl<'a> WindowManager<'a> {
 
         let raised_window = self.selected_window.expect("Expected window");
 
-        for (index, w_window) in self.windows.list.into_iter().enumerate() {
-            let window = w_window.payload;
+        for (index, window) in self.windows.iter().enumerate() {
             if (index > 0) {
                 if let Some(intersection_region) = raised_window
                     .generate_rect()
                     .intersection(&window.generate_rect())
                 {
-                    // intersection_region.paint(raised_window.colour, self.fb_addr);
                     window.paint_rect(&intersection_region, self.fb_addr);
                 }
             }
@@ -212,26 +209,14 @@ impl<'a> WindowManager<'a> {
         let raised_window = self.windows.peek().clone();
 
         if let Some(mut drag_region) = self.drag_region {
-            for (index, w_window) in self.windows.list.into_iter().enumerate() {
-                let window = w_window.payload;
-
+            for (index, window) in self.windows.iter_mut().enumerate() {
                 if (index == 0) {
-                    // window.generate_rect().paint(window.colour, self.fb_addr);
                     window.paint_rect(&window.generate_rect(), self.fb_addr);
                 } else {
                     let mut test_rects: Queue<Rect> = Queue::<Rect>::new();
 
                     test_rects.enqueue(drag_region);
                     Rect::split_rect_list(&mut raised_window.generate_rect(), &mut test_rects);
-
-                    // for rect in test_rects.list.into_iter() {
-                    //     // print_serial!("{:?}\n", rect);
-                    //     rect.payload.paint_against_region(
-                    //         &window.generate_rect(),
-                    //         window.colour,
-                    //         self.fb_addr,
-                    //     );
-                    // }
 
                     window.paint(&test_rects, self.fb_addr);
 
@@ -241,21 +226,19 @@ impl<'a> WindowManager<'a> {
 
             // Repaint background
 
-            drag_region.top = drag_region.top.wrapping_sub_zero(50).max(30);
+            drag_region.top = drag_region.top.wrapping_sub_zero(50).max(TOP_BAR_HEIGHT);
             drag_region.bottom += 50;
             drag_region.left = drag_region.left.wrapping_sub_zero(50);
             drag_region.right += 50;
 
             self.dr_windows.enqueue(drag_region);
 
-            for w_window in self.windows.list.into_iter() {
-                let window = w_window.payload;
+            for window in self.windows.iter_mut() {
                 let mut splitting_rect = window.generate_rect();
                 Rect::split_rect_list(&mut splitting_rect, &mut self.dr_windows);
             }
 
-            for rect in self.dr_windows.list.into_iter() {
-                let rect = rect.payload;
+            for rect in self.dr_windows.iter() {
                 rect.paint_colour(BACKGROUND_COLOUR, self.fb_addr);
             }
 
@@ -273,18 +256,16 @@ impl<'a> WindowManager<'a> {
     }
 
     fn find_window_under_mouse(&mut self) -> (isize, Option<&Window>) {
-        for (index, mut window) in self.windows.list.into_iter().enumerate() {
-            let win = window.payload;
-
-            if win
+        for (index, mut window) in self.windows.iter().enumerate() {
+            if window
                 .generate_rect()
                 .coord_does_intersect((self.mouse_coords.0, self.mouse_coords.1))
             {
-                self.selected_window = Some(window.payload);
-                self.drag_offset.0 = self.mouse_coords.0 - win.x;
-                self.drag_offset.1 = self.mouse_coords.1 - win.y;
+                self.selected_window = Some(window.clone());
+                self.drag_offset.0 = self.mouse_coords.0 - window.x;
+                self.drag_offset.1 = self.mouse_coords.1 - window.y;
 
-                return (index as isize, Some(&window.payload));
+                return (index as isize, Some(&window));
             }
         }
         (-1, None)
@@ -293,12 +274,12 @@ impl<'a> WindowManager<'a> {
     fn get_above_windows(&self, target_index: usize) -> Queue<Window> {
         let mut windows_above = Queue::<Window>::new();
 
-        for (index, window) in self.windows.list.into_iter().enumerate() {
+        for (index, window) in self.windows.iter().enumerate() {
             if (index == target_index) {
                 break;
             }
 
-            windows_above.enqueue(window.payload.clone());
+            windows_above.enqueue(window.clone());
         }
 
         windows_above
@@ -307,7 +288,7 @@ impl<'a> WindowManager<'a> {
     fn raise(&mut self, index: isize) {
         // Only need to raise window if not already head
         if (index > -1) {
-            let remove_data = self.windows.list.remove(index as usize).unwrap();
+            let remove_data = self.windows.remove(index as usize).unwrap();
             let current_window = self.selected_window.unwrap();
             kfree(remove_data.1);
             self.windows.push(current_window.clone());
@@ -337,22 +318,16 @@ impl<'a> WindowManager<'a> {
     */
     fn paint_windows(&mut self) {
         // Go through each window and repaint the dirty regions appropriately
-        for (index, w_window) in self.windows.list.into_iter().enumerate() {
-            let window = w_window.payload;
-
+        for (index, window) in self.windows.iter().enumerate() {
             self.dr_windows.enqueue(window.generate_rect());
 
             let windows_above = self.get_above_windows(index);
-            for window in windows_above.list.into_iter() {
-                let mut clipping_rect = window.payload.generate_rect();
+            for window in windows_above.iter() {
+                let mut clipping_rect = window.generate_rect();
                 Rect::split_rect_list(&mut clipping_rect, &mut self.dr_windows);
             }
 
             window.paint(&self.dr_windows, self.fb_addr);
-
-            // for rect in self.dr_windows.list.into_iter() {
-            // rect.payload.paint(window.colour, self.fb_addr);
-            // }
 
             self.dr_windows.empty();
         }
@@ -360,14 +335,12 @@ impl<'a> WindowManager<'a> {
 
     fn paint_background(&mut self) {
         // Go through each window and split against to find appropriate sections
-        for w_window in self.windows.list.into_iter() {
-            let window = w_window.payload;
+        for window in self.windows.iter_mut() {
             let mut splitting_rect = window.generate_rect();
             Rect::split_rect_list(&mut splitting_rect, &mut self.dr_windows);
         }
 
-        for rect in self.dr_windows.list.into_iter() {
-            let rect = rect.payload;
+        for rect in self.dr_windows.iter() {
             rect.paint_colour(BACKGROUND_COLOUR, self.fb_addr);
         }
     }

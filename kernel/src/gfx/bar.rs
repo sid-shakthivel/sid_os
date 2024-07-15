@@ -13,7 +13,7 @@ use super::{
     SCREEN_WIDTH,
 };
 
-const TOP_BAR_HEIGHT: u16 = 30;
+pub const TOP_BAR_HEIGHT: u16 = 30;
 const TOP_BAR_COLOUR: u32 = 0x1E1E2E;
 const BAR_TEXT_OFFSET: u16 = 15;
 const TIME_LENGTH: u16 = 8;

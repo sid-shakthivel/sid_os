@@ -149,7 +149,7 @@ impl Vfs {
 
                     file.name = combined_str.clone();
 
-                    print_serial!("Found file {}\n", file.name);
+                    // print_serial!("Found file {}\n", file.name);
 
                     current_node.add_child(TreeNode::new(file));
                 }
@@ -330,18 +330,28 @@ impl Vfs {
     pub fn open_addr(&self, filepath: &str) -> *mut File {
         let is_absolute = filepath.starts_with("/");
 
-        assert!(is_absolute, "Error: Filename must be absolute");
+        // print_serial!("file is {}\n", filepath);
 
-        let cleaned_filepath: &str = &filepath[1..filepath.len()];
-        let mut filepath_components = cleaned_filepath.split("/");
+        // assert!(is_absolute, "Error: Filename must be absolute");
+
+        // let cleaned_filepath: &str = &filepath[1..filepath.len()];
+        // let mut filepath_components = cleaned_filepath.split("/");
+
+        // let mut current_node = self.root.clone();
+        // for component in filepath_components {
+        //     if let Some(node) = self.find(component, &current_node) {
+        //         current_node = node;
+        //     } else {
+        //         panic!("Error: File not found");
+        //     }
+        // }
 
         let mut current_node = self.root.clone();
-        for component in filepath_components {
-            if let Some(node) = self.find(component, &current_node) {
-                current_node = node;
-            } else {
-                panic!("Error: File not found");
-            }
+
+        if let Some(node) = self.find(filepath, &current_node) {
+            current_node = node;
+        } else {
+            panic!("Error: File not found");
         }
 
         current_node.payload
@@ -354,6 +364,8 @@ impl Vfs {
 
         let cleaned_filepath: &str = &filepath[1..filepath.len()];
         let mut filepath_components = cleaned_filepath.split("/");
+
+        // print_serial!("Opening {:?}\n", filepath);
 
         let mut current_node = self.root.clone();
         for component in filepath_components {
@@ -371,16 +383,18 @@ impl Vfs {
     }
 
     fn find(&self, filename: &str, current_node: &TreeNode<File>) -> Option<TreeNode<File>> {
-        print_serial!("Finding stuff\n");
+        // print_serial!("Finding stuff\n");
 
         for child in current_node.children.iter() {
             let file = unsafe { &*child.payload };
 
-            print_serial!("{:?}\n", file);
+            // print_serial!("{:?}\n", file);
 
-            if file.name == filename {
-                return Some(child.clone());
-            }
+            // if file.name == filename {
+            //     return Some(child.clone());
+            // }
+
+            return Some(child.clone());
         }
 
         None

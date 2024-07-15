@@ -1,5 +1,5 @@
 use super::{bitwise, spinlock::Lock};
-use crate::memory::allocator::kmalloc;
+use crate::{memory::allocator::kmalloc, print_serial};
 use core::mem::size_of;
 
 #[repr(u8)]
@@ -9,7 +9,8 @@ enum EventFlags {
     MouseRightClicked = 0b00000100,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
 pub struct Event {
     flags: u8,
     scancode: u8,
@@ -76,6 +77,10 @@ impl EventManager {
 
     pub fn get_event(&mut self) -> *mut Event {
         let event_ref = unsafe { &mut *self.event_addr };
+
+        // if (event_ref.scancode != 0) {
+        //     print_serial!("event: {:?}\n", event_ref);
+        // }
 
         unsafe {
             core::ptr::write(self.event_rtn_addr, *event_ref);

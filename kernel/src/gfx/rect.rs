@@ -171,7 +171,7 @@ impl Rect {
         // Loop through the clipping rects
         let mut splitted_rects = Queue::<Rect>::new();
 
-        for mut i in 0..rects.list.length() {
+        for mut i in 0..rects.length() {
             let mut working_rect = rects.get_mut(i);
 
             // Check for intersection
@@ -185,8 +185,8 @@ impl Rect {
 
         rects.empty();
 
-        for rect in splitted_rects.list.into_iter() {
-            rects.enqueue(rect.payload);
+        for rect in splitted_rects.iter() {
+            rects.enqueue(*rect);
         }
     }
 

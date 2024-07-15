@@ -16,7 +16,7 @@ CC = x86_64-sidos-gcc
 CFLAGS = -no-pie -static-libgcc -nostdlib -fno-builtin -fno-stack-protector -Wall -Wextra -O0 -D_POSIX_SOURCE -I${LIB_HEADERS}
 LINKER_FLAGS = -no-pie -static-libgcc -nostdlib -z max-page-size=4096 -nostdlib
 
-TARGET = static
+TARGET = terminal
 
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)

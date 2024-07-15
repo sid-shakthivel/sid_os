@@ -164,10 +164,8 @@ impl Window {
     pub fn paint(&self, dr: &Queue<Rect>, fb_addr: usize) {
         let mut rect = self.generate_rect();
 
-        for rect_node in dr.list.into_iter() {
-            let current_rect = rect_node.payload;
-
-            current_rect.paint_against_region(
+        for rect_node in dr.iter() {
+            rect_node.paint_against_region(
                 &rect,
                 self.buffer_addr,
                 fb_addr,

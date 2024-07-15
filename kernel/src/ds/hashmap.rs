@@ -27,9 +27,8 @@ pub struct HashItem<T: 'static> {
     values: *mut Queue<HashItem<T>>,
 }
 
-fn find_item<T>(node: &ListNode<HashItem<T>>, key: usize) -> bool {
-    let hashitem = &node.payload;
-    return hashitem.key == key;
+fn find_item<T>(node: &HashItem<T>, key: usize) -> bool {
+    return node.key == key;
 }
 
 impl<T: Clone> HashItem<T> {
@@ -69,7 +68,7 @@ impl<T: Copy> HashMap<T> {
                 let queue = unsafe { &mut *existing_item.values };
 
                 if let Some(queue_index) = queue.find_where(&find_item, key) {
-                    queue.list.remove(queue_index);
+                    queue.remove(queue_index);
                 }
 
                 queue.enqueue(new_item);
@@ -143,7 +142,7 @@ impl<T: Copy> HashMap<T> {
             let queue = unsafe { &mut *hashitem.values };
 
             if let Some(queue_index) = queue.find_where(&find_item, key) {
-                queue.list.remove(queue_index);
+                queue.remove(queue_index);
             }
         }
     }

@@ -1,4 +1,4 @@
-use super::list::{List, ListNode, MutListIterator};
+use super::list::{List, ListIterator, ListNode, MutListIterator};
 use crate::{
     memory::{
         allocator::{self, kfree, kmalloc, print_memory_list},
@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Stack<T: 'static> {
-    pub list: List<T>,
+    list: List<T>,
 }
 
 impl<T: Clone> Stack<T> {
@@ -47,15 +47,23 @@ impl<T: Clone> Stack<T> {
         return unsafe { &mut (*value).payload };
     }
 
+    pub fn remove(&mut self, index: usize) -> Option<(T, *mut usize)> {
+        self.list.remove(index)
+    }
+
     pub fn iter_mut(&mut self) -> MutListIterator<T> {
         self.list.iter_mut()
     }
 
+    pub fn iter(&self) -> ListIterator<T> {
+        self.list.iter()
+    }
+
     pub fn find_where<F>(&self, func: &F, key: usize) -> Option<usize>
     where
-        F: Fn(&ListNode<T>, usize) -> bool,
+        F: Fn(&T, usize) -> bool,
     {
-        for (i, node) in self.list.into_iter().enumerate() {
+        for (i, node) in self.list.iter().enumerate() {
             if func(node, key) {
                 return Some(i);
             }

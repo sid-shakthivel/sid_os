@@ -8,20 +8,18 @@ Remember:
 ```
 
 Now: 
-- Port doom
+- Port doom 
+- The issue potentially could be due to the read method in VFS
 
 Refactoring:
 - When deleting Set all FAT entries in file's cluster chain to zero
 - Rewrite the FileEntry::new() function
 - General FAT bugs
-- Actually use iter_mut instead of .into_iter() etc
-- Need a buffer for each window
-
-Bugs:
-- Fix rewritting something on same area
+- Better system to enable stuff for PIC
+- Potential bug in multitasking
 
 New:
-- Methods for writing string and to buffer
+- Syscall to get pid of process from process name
 - RTC interrupt to update every second?
 
 Useful articles:

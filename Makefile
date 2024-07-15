@@ -1,6 +1,6 @@
 KERNEL = $(shell pwd)/kernel
-USERLAND_MODULE_1 = $(shell pwd)/userland/static
-USERLAND_MODULE_2 = $(shell pwd)/userland/libforth
+USERLAND_MODULE_1 = $(shell pwd)/userland/terminal
+USERLAND_MODULE_2 = $(shell pwd)/userland/fe
 USERLAND_MODULE_3 = $(shell pwd)/userland/lua
 PROJECT_PATH = $(shell pwd)
 SYSCALLS = $(shell pwd)/userland/syscalls
@@ -20,7 +20,9 @@ all:
 	cd $(SYSCALLS) && make 
 
 	# Userspace modules
-	cd $(USERLAND_MODULE_1) && make all && make install
+	# cd $(USERLAND_MODULE_1) && make all && make install
+
+	# cd $(USERLAND_MODULE_2) && make all && make install
 
 	# cd $(USERLAND_MODULE_3) && make generic
 	# rm -f $(shell pwd)/isodir/modules/luac

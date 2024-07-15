@@ -137,7 +137,7 @@ impl<T: Clone> PriorityQueue<T> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Queue<T: 'static> {
-    pub list: List<T>,
+    list: List<T>,
 }
 
 impl<T: Clone> Queue<T> {
@@ -177,11 +177,23 @@ impl<T: Clone> Queue<T> {
         self.list.iter_mut()
     }
 
+    pub fn iter(&self) -> ListIterator<T> {
+        self.list.iter()
+    }
+
+    pub fn length(&self) -> usize {
+        self.list.length()
+    }
+
+    pub fn remove(&mut self, index: usize) -> Option<(T, *mut usize)> {
+        self.list.remove(index)
+    }
+
     pub fn find_where<F>(&self, func: &F, key: usize) -> Option<usize>
     where
-        F: Fn(&ListNode<T>, usize) -> bool,
+        F: Fn(&T, usize) -> bool,
     {
-        for (i, node) in self.list.into_iter().enumerate() {
+        for (i, node) in self.list.iter().enumerate() {
             if func(node, key) {
                 return Some(i);
             }

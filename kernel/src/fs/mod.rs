@@ -15,11 +15,11 @@ pub fn init(start_addr: usize) {
 
     // print_serial!("attempting to find\n");
 
-    let new_file = VFS.lock().open("/a.txt");
-    VFS.free();
+    // let new_file = VFS.lock().open("/a.txt");
+    // VFS.free();
 
-    let buffer = kmalloc(new_file.size) as *mut u8;
-    VFS.lock().read_file(&new_file, buffer, new_file.size, 0);
-    VFS.free();
-    print_serial!("{:?}", crate::utils::string::get_string_from_ptr(buffer));
+    // let buffer = kmalloc(new_file.size) as *mut u8;
+    // VFS.lock().read_file(&new_file, buffer, new_file.size, 0);
+    // VFS.free();
+    // print_serial!("{:?}", crate::utils::string::get_string_from_ptr(buffer));
 }

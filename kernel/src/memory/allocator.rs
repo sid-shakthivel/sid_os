@@ -144,10 +144,10 @@ fn align(size: usize) -> usize {
     Returns first memory block which fits the size
 */
 fn find_first_fit(size: usize) -> (usize, Option<MemoryBlock>) {
-    for (i, memory_block) in FREE_MEMORY_BLOCK_LIST.lock().into_iter().enumerate() {
+    for (i, memory_block) in FREE_MEMORY_BLOCK_LIST.lock().iter().enumerate() {
         FREE_MEMORY_BLOCK_LIST.free();
-        if memory_block.payload.size > size {
-            return (i, Some(memory_block.payload.clone()));
+        if memory_block.size > size {
+            return (i, Some(memory_block.clone()));
         }
     }
     FREE_MEMORY_BLOCK_LIST.free();
@@ -155,7 +155,7 @@ fn find_first_fit(size: usize) -> (usize, Option<MemoryBlock>) {
 }
 
 pub fn print_memory_list() {
-    for memory_block in FREE_MEMORY_BLOCK_LIST.lock().into_iter() {
+    for memory_block in FREE_MEMORY_BLOCK_LIST.lock().iter() {
         print_serial!("{:?}\n", memory_block);
     }
     FREE_MEMORY_BLOCK_LIST.free();
