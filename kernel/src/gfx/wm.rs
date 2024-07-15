@@ -3,6 +3,7 @@ use core::panic;
 use super::psf::{self, Font};
 use super::rect::{self, Rect};
 use super::window::Window;
+use crate::ds::list::ListNode;
 use crate::ds::queue::Queue;
 use crate::ds::stack::Stack;
 use crate::memory::allocator::{kfree, print_memory_list};
@@ -28,7 +29,7 @@ pub struct WindowManager<'a> {
     drag_offset: (u16, u16),
     mouse_coords: (u16, u16),
     fb_addr: usize,
-    current_wid: i16,
+    current_wid: usize,
     area: Rect,
     current_state: WMState,
     marker: core::marker::PhantomData<&'a Window>,
@@ -43,6 +44,10 @@ enum WMState {
     Idle,
     Select,
     Drag,
+}
+
+fn find_window(node: &ListNode<Window>, wid: usize) -> bool {
+    return node.payload.wid == wid;
 }
 
 impl<'a> WindowManager<'a> {
@@ -68,11 +73,16 @@ impl<'a> WindowManager<'a> {
         self.fb_addr = address;
     }
 
-    pub fn add_window(&mut self, mut window: Window) -> i16 {
+    pub fn add_window(&mut self, mut window: Window) -> usize {
         window.wid = self.current_wid;
         self.current_wid += 1;
         self.windows.push(window);
         self.current_wid - 1
+    }
+
+    pub fn find_get_mut(&mut self, wid: usize) -> &mut Window {
+        let index = self.windows.find_where(&find_window, wid).unwrap();
+        self.windows.get_mut(index)
     }
 
     pub fn handle_mouse_event(&mut self, new_mouse_coords: (i16, i16), is_left_click: bool) {
@@ -162,7 +172,7 @@ impl<'a> WindowManager<'a> {
 
         // If the mouse is not over a window, repaint the background
         if !has_repainted {
-            old_mouse_rect.paint(BACKGROUND_COLOUR, self.fb_addr);
+            old_mouse_rect.paint_colour(BACKGROUND_COLOUR, self.fb_addr);
         }
 
         self.mouse_coords.0 = new_mouse_coords.0 as u16;
@@ -170,7 +180,7 @@ impl<'a> WindowManager<'a> {
 
         let mouse_rect = self.generate_mouse_rect();
 
-        mouse_rect.paint(MOUSE_COLOUR, self.fb_addr);
+        mouse_rect.paint_colour(MOUSE_COLOUR, self.fb_addr);
     }
 
     fn paint_on_raise(&mut self) {
@@ -246,7 +256,7 @@ impl<'a> WindowManager<'a> {
 
             for rect in self.dr_windows.list.into_iter() {
                 let rect = rect.payload;
-                rect.paint(BACKGROUND_COLOUR, self.fb_addr);
+                rect.paint_colour(BACKGROUND_COLOUR, self.fb_addr);
             }
 
             self.dr_windows.empty();
@@ -297,7 +307,7 @@ impl<'a> WindowManager<'a> {
     fn raise(&mut self, index: isize) {
         // Only need to raise window if not already head
         if (index > -1) {
-            let remove_data = self.windows.list.remove_at(index as usize).unwrap();
+            let remove_data = self.windows.list.remove(index as usize).unwrap();
             let current_window = self.selected_window.unwrap();
             kfree(remove_data.1);
             self.windows.push(current_window.clone());
@@ -358,7 +368,7 @@ impl<'a> WindowManager<'a> {
 
         for rect in self.dr_windows.list.into_iter() {
             let rect = rect.payload;
-            rect.paint(BACKGROUND_COLOUR, self.fb_addr);
+            rect.paint_colour(BACKGROUND_COLOUR, self.fb_addr);
         }
     }
 }

@@ -9,6 +9,7 @@ use core::panic;
 use crate::fs::vfs::{Vfs, VFS};
 use crate::gfx::window::{self, SimpleWindow, Window};
 use crate::gfx::wm::WM;
+use crate::gfx::FB_ADDR;
 use crate::interrupts::{InterruptStackFrame, SyscallStackFrame};
 use crate::memory::allocator::kmalloc;
 use crate::memory::page_frame_allocator::PAGE_FRAME_ALLOCATOR;
@@ -71,8 +72,15 @@ pub fn syscall_handler(registers: &SyscallStackFrame) -> i64 {
         351 => isatty(registers.rbx),
         352 => send_message(registers.rbx as *mut Message),
         353 => receive_message(),
-        354 => create_window(registers.rbx as *mut SimpleWindow, registers.rcx != 0),
+        354 => create_window(registers.rbx as *mut SimpleWindow),
         355 => get_event(),
+        356 => paint_string(
+            registers.rbx as *mut u8,
+            registers.rcx,
+            registers.rsi,
+            registers.rdi,
+        ),
+        357 => copy_to_win_buffer(registers.rbx, registers.rcx as *const u32),
         _ => {
             panic!("Unknown syscall? {}\n", syscall_id);
             return 0;
@@ -329,23 +337,22 @@ fn receive_message() -> i64 {
     -1
 }
 
-fn create_window(new_window: *mut SimpleWindow, should_repaint: bool) -> i64 {
+fn create_window(new_window: *mut SimpleWindow) -> i64 {
     let window_properties = unsafe { &mut *new_window };
 
+    // let new_window_name = "terminal";
+
     let mut new_window_name = string::get_string_from_ptr(window_properties.name);
-    new_window_name = &new_window_name[0..new_window_name.len() - 1];
 
     let new_window = Window::from(&window_properties, &new_window_name);
 
     WM.lock().add_window(new_window);
     WM.free();
 
-    if should_repaint {
-        WM.lock().paint();
-        WM.free();
-    }
+    WM.lock().paint();
+    WM.free();
 
-    return 0;
+    new_window.wid as i64
 }
 
 fn get_event() -> i64 {
@@ -353,6 +360,30 @@ fn get_event() -> i64 {
     EVENT_MANAGER.free();
 
     event as i64
+}
+
+fn paint_string(ptr: *mut u8, wid: usize, x: usize, y: usize) -> i64 {
+    let string = string::get_string_from_ptr(ptr);
+
+    let window = WM.lock().find_get_mut(wid);
+    WM.free();
+
+    let rect = window.generate_rect();
+    window.copy_string_to_buffer(string, x as u16, y as u16, 0x00);
+
+    unsafe {
+        let fb_addr = FB_ADDR;
+        rect.paint_text(string, x as u16, y as u16, fb_addr, 0x00);
+    }
+
+    1
+}
+
+fn copy_to_win_buffer(wid: usize, buffer: *const u32) -> i64 {
+    let window = WM.lock().find_get_mut(wid);
+    WM.free();
+    window.copy_buffer_to_buffer(buffer);
+    1
 }
 
 /*

@@ -125,7 +125,7 @@ impl Vfs {
 
                     self.build_vfs(
                         fat::get_sector_from_cluster(self.ds_addr, file.current_cluster),
-                        current_node.children.get_last().unwrap(),
+                        current_node.children.get_last_mut().unwrap(),
                     );
                 }
                 FileType::File => {

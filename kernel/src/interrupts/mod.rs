@@ -13,6 +13,8 @@ use self::pic::PICS;
 use crate::dev::keyboard::KEYBOARD;
 use crate::dev::mouse::MOUSE;
 use crate::ds::stack;
+use crate::gfx::bar::TOP_BAR;
+use crate::gfx::FB_ADDR;
 #[warn(unused_assignments)]
 use crate::interrupts::idt::GateType;
 use crate::interrupts::idt::IDTEntry;
@@ -241,6 +243,12 @@ pub extern "C" fn exception_with_error_handler(
 pub extern "C" fn pit_handler(old_task_rsp: usize) -> usize {
     PICS.lock().acknowledge(0x20 as u8);
     PICS.free();
+
+    unsafe {
+        let fb_addr = unsafe { FB_ADDR };
+        TOP_BAR.lock().update_time(fb_addr);
+        TOP_BAR.free();
+    }
 
     let rsp = PROCESS_MANAGER.lock().switch_process(old_task_rsp);
     PROCESS_MANAGER.free();

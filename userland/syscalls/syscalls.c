@@ -127,13 +127,12 @@ int create_window(Window *new_window, bool should_repaint)
 {
 
     int64_t result;
-    asm volatile("mov %2, %%ebx \n\t\
-    mov %1, %%ecx \n\t\
-    mov $254, %%eax \n\t\
-    int $0x80 \n\t\
-    "
+    asm volatile("mov %1, %%ebx \n\t\
+        mov $354, %%eax \n\t\
+        int $0x80 \n\t\
+        "
                  : "=r"(result)
-                 : "r"((int)should_repaint), "m"(new_window));
+                 : "m"(new_window));
     return (int)result;
 }
 
@@ -145,4 +144,32 @@ Event *get_event()
                  "
                  : "=r"(result));
     return (Event *)result;
+}
+
+int paint_string(char *ptr, int wid, int x, int y)
+{
+    int64_t result;
+    asm volatile("mov %4, %%edi \n\t\
+        mov %1, %%ebx \n\t\
+        mov %2, %%ecx \n\t\
+        mov %3, %%esi \n\t\
+        mov $356, %%eax \n\t\
+        int $0x80 \n\t\
+        "
+                 : "=r"(result)
+                 : "m"(ptr), "r"(wid), "r"(x), "r"(y));
+    return (int)result;
+}
+
+int copy_to_win_buffer(int wid, uint32_t *buffer)
+{
+    int64_t result;
+    asm volatile("mov %1, %%ebx \n\t\
+        mov %2, %%ecx \n\t\
+        mov $357, %%eax \n\t\
+        int $0x80 \n\t\
+        "
+                 : "=r"(result)
+                 : "r"(wid), "m"(buffer));
+    return (int)result;
 }

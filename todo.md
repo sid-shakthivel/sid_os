@@ -13,14 +13,16 @@ Now:
 Refactoring:
 - When deleting Set all FAT entries in file's cluster chain to zero
 - Rewrite the FileEntry::new() function
-- General FAT systems
-- Switch into_iter to iter (for list and remove need for ListNode to just payload)
-- Switch from using wrappers/listnodes to actual thing
-- Have specific mut methods for mutable things
+- General FAT bugs
+- Actually use iter_mut instead of .into_iter() etc
 - Need a buffer for each window
+
+Bugs:
+- Fix rewritting something on same area
 
 New:
 - Methods for writing string and to buffer
+- RTC interrupt to update every second?
 
 Useful articles:
 https://fejlesztek.hu/create-a-fat-file-system-image-on-linux/

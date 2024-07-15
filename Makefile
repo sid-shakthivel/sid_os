@@ -20,7 +20,7 @@ all:
 	cd $(SYSCALLS) && make 
 
 	# Userspace modules
-	# cd $(USERLAND_MODULE_1) && make all && make install
+	cd $(USERLAND_MODULE_1) && make all && make install
 
 	# cd $(USERLAND_MODULE_3) && make generic
 	# rm -f $(shell pwd)/isodir/modules/luac

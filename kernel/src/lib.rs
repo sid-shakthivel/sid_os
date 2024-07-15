@@ -72,9 +72,6 @@ pub extern "C" fn rust_main(multiboot_info_addr: usize, magic: usize) {
 
     // grub::initalise_userland(multiboot_info);
 
-    // let current_datetime = utils::rtc::get_current_datetime();
-    // current_datetime.print();
-
     interrupts::enable();
 
     loop {}

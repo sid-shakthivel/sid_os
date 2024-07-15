@@ -1,4 +1,4 @@
-use super::list::{List, ListIterator, ListNode};
+use super::list::{List, ListIterator, ListNode, MutListIterator};
 use super::vec::DynamicArray;
 use crate::memory::{
     allocator::{kfree, kmalloc},
@@ -73,7 +73,7 @@ impl<T: Clone> PriorityQueue<T> {
         let mut index = self.nodes.length() - 1;
         while index > 0 {
             let parent = (index - 1) / 2;
-            if self.nodes.get(index) > self.nodes.get(parent) {
+            if self.nodes.get_mut(index) > self.nodes.get_mut(parent) {
                 self.nodes.swap(index, parent);
                 index = parent;
             } else {
@@ -100,13 +100,13 @@ impl<T: Clone> PriorityQueue<T> {
 
         while left < len {
             let right = left + 1;
-            let largest = if right < len && self.nodes.get(right) > self.nodes.get(left) {
+            let largest = if right < len && self.nodes.get_mut(right) > self.nodes.get_mut(left) {
                 right
             } else {
                 left
             };
 
-            if self.nodes.get(largest) > self.nodes.get(0) {
+            if self.nodes.get_mut(largest) > self.nodes.get_mut(0) {
                 self.nodes.swap(largest, index);
                 index = largest;
                 left = 2 * index + 1;
@@ -117,7 +117,8 @@ impl<T: Clone> PriorityQueue<T> {
     }
 
     pub fn peek(&mut self) -> &mut T {
-        let node = self.nodes.get(0).expect("Priority Queue is empty") as *mut PriorityWrapper<T>;
+        let node =
+            self.nodes.get_mut(0).expect("Priority Queue is empty") as *mut PriorityWrapper<T>;
 
         unsafe {
             let node_value_mut = &mut ((*node).value) as *mut T;
@@ -150,7 +151,7 @@ impl<T: Clone> Queue<T> {
     }
 
     pub fn dequeue(&mut self) -> Option<T> {
-        self.list.remove_at(0).map(|node| {
+        self.list.remove(0).map(|node| {
             kfree(node.1);
             node.0
         })
@@ -160,16 +161,20 @@ impl<T: Clone> Queue<T> {
         while self.dequeue().is_some() {}
     }
 
-    pub fn get_element(&mut self, index: usize) -> &mut T {
+    pub fn get_mut(&mut self, index: usize) -> &mut T {
         return self
             .list
-            .get_at(index)
+            .get_mut(index)
             .expect("ERROR: Queue does not contain element at specified index");
     }
 
     pub fn peek(&mut self) -> &mut T {
         let value = self.list.head.expect("ERROR: Queue is empty");
         return unsafe { &mut (*value).payload };
+    }
+
+    pub fn iter_mut(&mut self) -> MutListIterator<T> {
+        self.list.iter_mut()
     }
 
     pub fn find_where<F>(&self, func: &F, key: usize) -> Option<usize>

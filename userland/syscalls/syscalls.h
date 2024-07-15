@@ -23,10 +23,10 @@ typedef struct
 
 typedef struct Window
 {
-    int x;
-    int y;
-    int width;
-    int height;
+    uint16_t x;
+    uint16_t y;
+    uint16_t width;
+    uint16_t height;
     unsigned int colour;
     char *name;
 } Window;
@@ -42,25 +42,27 @@ typedef struct Event
 
 void _exit();
 int close(int file);
-int execve(char *name, char **argv, char **env);
-int fork();
+// int execve(char *name, char **argv, char **env);
+// int fork();
 // int fstat(int file, struct stat *st);
 int getpid();
 int isatty(int file);
-int kill(int pid, int sig);
-int link(char *old, char *new);
+// int kill(int pid, int sig);
+// int link(char *old, char *new);
 int open(const char *name, int flags, ...);
-int read(int file, char *ptr, int len);
+// int read(int file, char *ptr, int len);
 // int stat(const char *file, struct stat *st);
 // clock_t times(struct tms *buf);
-int unlink(char *name);
-int wait(int *status);
-int lseek(int file, int ptr, int dir);
-int write(int file, char *ptr, int len);
+// int unlink(char *name);
+// int wait(int *status);
+// int lseek(int file, long int ptr, int dir);
+// int write(int file, char *ptr, int len);
 // int gettimeofday(struct timeval *p, void *restrict);
 int send_message(Message *message);
 Message *receive_message();
 int create_window(Window *new_window, bool should_repaint);
 Event *get_event();
+int paint_string(char *ptr, int wid, int x, int y);
+int copy_to_win_buffer(int wid, uint32_t *buffer);
 
 // void *liballoc_alloc(int pages);

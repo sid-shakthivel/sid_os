@@ -63,7 +63,7 @@ impl ProcessManager {
             let receiver_process = self
                 .tasks
                 .nodes
-                .get(process_index)
+                .get_mut(process_index)
                 .expect("Process not found");
 
             receiver_process.value.messages.enqueue(*message_ref);

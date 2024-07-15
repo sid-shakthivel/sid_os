@@ -69,7 +69,7 @@ impl<T: Copy> HashMap<T> {
                 let queue = unsafe { &mut *existing_item.values };
 
                 if let Some(queue_index) = queue.find_where(&find_item, key) {
-                    queue.list.remove_at(queue_index);
+                    queue.list.remove(queue_index);
                 }
 
                 queue.enqueue(new_item);
@@ -95,7 +95,7 @@ impl<T: Copy> HashMap<T> {
             let queue = unsafe { &mut *hashitem.values };
 
             if let Some(queue_index) = queue.find_where(&find_item, key) {
-                return Some(queue.get_element(index).value);
+                return Some(queue.get_mut(index).value);
             }
         }
 
@@ -118,7 +118,7 @@ impl<T: Copy> HashMap<T> {
                 let queue = unsafe { &mut *hashitem.values };
 
                 if let Some(queue_index) = queue.find_where(&find_item, key) {
-                    return Some(&mut queue.get_element(queue_index).value as *mut T);
+                    return Some(&mut queue.get_mut(queue_index).value as *mut T);
                 }
 
                 None
@@ -143,7 +143,7 @@ impl<T: Copy> HashMap<T> {
             let queue = unsafe { &mut *hashitem.values };
 
             if let Some(queue_index) = queue.find_where(&find_item, key) {
-                queue.list.remove_at(queue_index);
+                queue.list.remove(queue_index);
             }
         }
     }

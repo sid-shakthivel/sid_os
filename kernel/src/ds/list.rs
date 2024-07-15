@@ -94,7 +94,7 @@ impl<T: Clone> List<T> {
         self.length += 1;
     }
 
-    pub fn get_at(&mut self, index: usize) -> Option<&mut T> {
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         let mut current = self.head?;
         let mut count = 0;
 
@@ -106,7 +106,7 @@ impl<T: Clone> List<T> {
         return unsafe { Some(&mut (*current).payload) };
     }
 
-    pub fn remove_at(&mut self, index: usize) -> Option<(T, *mut usize)> {
+    pub fn remove(&mut self, index: usize) -> Option<(T, *mut usize)> {
         if index >= self.length || index < 0 {
             return None;
         }
@@ -155,6 +155,13 @@ impl<T: Clone> List<T> {
 
         return Some((node.payload.clone(), current as *mut usize));
     }
+
+    pub fn iter_mut(&self) -> MutListIterator<'_, T> {
+        MutListIterator {
+            current: self.head,
+            _marker: core::marker::PhantomData,
+        }
+    }
 }
 
 impl<'a, T> IntoIterator for &'a List<T> {
@@ -179,6 +186,22 @@ impl<'a, T> Iterator for ListIterator<'a, T> {
         self.current.map(|node| {
             self.current = node.next.map(|next| unsafe { &*next });
             node
+        })
+    }
+}
+
+pub struct MutListIterator<'a, T: 'static> {
+    current: Option<*mut ListNode<T>>,
+    _marker: core::marker::PhantomData<&'a T>,
+}
+
+impl<'a, T> Iterator for MutListIterator<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.current.map(|node| {
+            self.current = unsafe { (*node).next };
+            unsafe { &mut (*node).payload }
         })
     }
 }

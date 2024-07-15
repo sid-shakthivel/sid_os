@@ -1,4 +1,4 @@
-use super::list::{List, ListNode};
+use super::list::{List, ListNode, MutListIterator};
 use crate::{
     memory::{
         allocator::{self, kfree, kmalloc, print_memory_list},
@@ -19,7 +19,7 @@ impl<T: Clone> Stack<T> {
 
     // Remove from top of list
     pub fn pop(&mut self) -> Option<T> {
-        self.list.remove_at(0).map(|node| {
+        self.list.remove(0).map(|node| {
             kfree(node.1);
             node.0
         })
@@ -35,15 +35,32 @@ impl<T: Clone> Stack<T> {
         self.list.push_front(payload, addr);
     }
 
-    pub fn get_at(&mut self, index: usize) -> &mut T {
+    pub fn get_mut(&mut self, index: usize) -> &mut T {
         return self
             .list
-            .get_at(index)
+            .get_mut(index)
             .expect("Undefined node at specifies index");
     }
 
     pub fn peek(&mut self) -> &mut T {
         let value = self.list.head.expect("ERROR: Stack is empty");
         return unsafe { &mut (*value).payload };
+    }
+
+    pub fn iter_mut(&mut self) -> MutListIterator<T> {
+        self.list.iter_mut()
+    }
+
+    pub fn find_where<F>(&self, func: &F, key: usize) -> Option<usize>
+    where
+        F: Fn(&ListNode<T>, usize) -> bool,
+    {
+        for (i, node) in self.list.into_iter().enumerate() {
+            if func(node, key) {
+                return Some(i);
+            }
+        }
+
+        None
     }
 }

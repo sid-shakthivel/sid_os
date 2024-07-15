@@ -56,7 +56,7 @@ fn _kmalloc(mut size: usize, should_update_size: bool) -> *mut usize {
     match wrapped_memory_block {
         Some(memory_block) => {
             // Remove old memory block from list
-            FREE_MEMORY_BLOCK_LIST.lock().remove_at(index);
+            FREE_MEMORY_BLOCK_LIST.lock().remove(index);
             FREE_MEMORY_BLOCK_LIST.free();
 
             let data_addr = memory_block.data;
